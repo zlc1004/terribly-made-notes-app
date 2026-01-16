@@ -4,7 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { marked } from "marked";
-import { markedKatex } from "marked-katex-extension";
+import markedKatex from "marked-katex-extension";
 
 interface Note {
   _id: string;
