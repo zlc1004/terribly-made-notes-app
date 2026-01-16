@@ -93,8 +93,13 @@ class ProcessingQueue {
       const transcription = await transcribeAudio(item.mp3Path, settings.stt);
       item.progress = 70;
 
+      // Get user classes for classification
+      const userClassesCollection = await getCollection('user_classes');
+      const userClassDocs = await userClassesCollection.find({ userId: item.userId }).toArray();
+      const userClasses = userClassDocs.map(doc => doc.name);
+
       // Summarize with LLM
-      const summary = await summarizeText(transcription, settings.llm);
+      const summary = await summarizeText(transcription, settings.llm, userClasses);
       item.progress = 90;
 
       // Save markdown file
@@ -105,17 +110,21 @@ class ProcessingQueue {
       item.progress = 95;
       const { ObjectId } = await import('mongodb');
       const notesCollection = await getCollection('notes');
+      const updateData: any = {
+        title: summary.title,
+        description: summary.description,
+        content: summary.content,
+        status: 'completed',
+        updatedAt: new Date(),
+      };
+
+      if (summary.noteClass) {
+        updateData.noteClass = summary.noteClass;
+      }
+
       await notesCollection.updateOne(
         { _id: new ObjectId(item.noteId), userId: item.userId },
-        {
-          $set: {
-            title: summary.title,
-            description: summary.description,
-            content: summary.content,
-            status: 'completed',
-            updatedAt: new Date(),
-          },
-        }
+        { $set: updateData }
       );
 
       // Delete original file after everything is saved successfully

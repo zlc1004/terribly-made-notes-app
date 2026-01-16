@@ -11,6 +11,7 @@ interface Note {
   createdAt: string;
   recordedAt?: string;
   status: 'processing' | 'completed';
+  noteClass?: string;
 }
 
 interface Progress {
@@ -27,10 +28,25 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'uploaded' | 'recorded'>('uploaded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [classFilter, setClassFilter] = useState<string>('all');
+  const [userClasses, setUserClasses] = useState<Array<{_id: string, name: string}>>([]);
 
   useEffect(() => {
     fetchNotes();
+    fetchUserClasses();
   }, []);
+
+  const fetchUserClasses = async () => {
+    try {
+      const response = await fetch('/api/user/classes');
+      if (response.ok) {
+        const data = await response.json();
+        setUserClasses(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user classes:', error);
+    }
+  };
 
   useEffect(() => {
     // Poll progress for processing notes
@@ -78,6 +94,15 @@ export default function Home() {
       );
     }
 
+    // Apply class filter
+    if (classFilter !== 'all') {
+      if (classFilter === 'unclassified') {
+        filtered = filtered.filter(note => !note.noteClass);
+      } else {
+        filtered = filtered.filter(note => note.noteClass === classFilter);
+      }
+    }
+
     // Apply sorting
     filtered.sort((a, b) => {
       const dateA = sortBy === 'uploaded' ? new Date(a.createdAt) : new Date(a.recordedAt || a.createdAt);
@@ -91,7 +116,7 @@ export default function Home() {
     });
 
     setFilteredNotes(filtered);
-  }, [notes, searchTerm, sortBy, sortOrder]);
+  }, [notes, searchTerm, sortBy, sortOrder, classFilter]);
 
   const fetchProgress = async (noteId: string) => {
     try {
@@ -152,9 +177,12 @@ export default function Home() {
       </SignedOut>
 
       <SignedIn>
-        <div style={{ marginBottom: '30px' }}>
+        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Link href="/new" className="btn btn-primary">
             + New Note
+          </Link>
+          <Link href="/settings" className="btn btn-secondary">
+            ⚙️ Settings
           </Link>
         </div>
 
@@ -170,6 +198,20 @@ export default function Home() {
                 className="form-input"
                 style={{ width: '200px', margin: 0 }}
               />
+              <select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="form-select"
+                style={{ width: 'auto', margin: 0 }}
+              >
+                <option value="all">All Classes</option>
+                <option value="unclassified">Unclassified</option>
+                {userClasses.map((noteClass) => (
+                  <option key={noteClass._id} value={noteClass.name}>
+                    {noteClass.name}
+                  </option>
+                ))}
+              </select>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'uploaded' | 'recorded')}
@@ -250,6 +292,11 @@ export default function Home() {
                       )}
 
                       <div className="note-date">
+                        {note.noteClass && (
+                          <p style={{ fontSize: '11px', color: '#3b82f6', fontWeight: '500', marginBottom: '2px' }}>
+                            📁 {note.noteClass}
+                          </p>
+                        )}
                         <p>Uploaded: {formatDate(note.createdAt)}</p>
                         {note.recordedAt && (
                           <p style={{ fontSize: '11px', color: '#9ca3af' }}>

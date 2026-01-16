@@ -186,26 +186,40 @@ export async function summarizeText(
     baseUrl: string;
     apiKey: string;
     modelName: string;
-  }
+  },
+  userClasses: string[] = []
 ): Promise<{
   title: string;
   description: string;
   content: string;
+  noteClass?: string;
 }> {
   try {
+    let classificationInstruction = '';
+    let classificationField = '';
+
+    if (userClasses.length > 0) {
+      classificationInstruction = `\n\nCLASSIFICATION REQUIREMENT:
+- You must classify this content into one of these predefined categories: ${userClasses.join(', ')}
+- Choose the most appropriate category based on the content
+- If none fit perfectly, choose the closest match`;
+
+      classificationField = ',\n  "noteClass": "The most appropriate category from the provided list"';
+    }
+
     const prompt = `Analyze the following transcribed audio and create a structured summary.
 
 CRITICAL INSTRUCTIONS:
 - Return ONLY a valid JSON object
 - Do NOT include any markdown code blocks, explanations, or other text
 - Do NOT wrap the JSON in \`\`\`json code blocks
-- Your entire response must be parseable JSON
+- Your entire response must be parseable JSON${classificationInstruction}
 
 Required JSON structure:
 {
   "title": "A concise, descriptive title for the content",
   "description": "A one-line summary description",
-  "content": "A detailed markdown-formatted summary of the main points, organized with headers, bullet points, and proper formatting"
+  "content": "A detailed markdown-formatted summary of the main points, organized with headers, bullet points, and proper formatting"${classificationField}
 }
 
 Transcribed text:
