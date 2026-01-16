@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { getCollection } from '@/lib/db';
+import { deleteDir, getNoteDir } from '@/lib/storage';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const notesCollection = await getCollection('notes');
+    const note = await notesCollection.findOne({
+      _id: params.id,
+      userId,
+    });
+
+    if (!note) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(note);
+  } catch (error) {
+    console.error('Failed to fetch note:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch note' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const notesCollection = await getCollection('notes');
+    const result = await notesCollection.deleteOne({
+      _id: params.id,
+      userId,
+    });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    }
+
+    // Delete associated files
+    const noteDir = getNoteDir(userId, params.id);
+    deleteDir(noteDir);
+
+    return NextResponse.json({ message: 'Note deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete note:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete note' },
+      { status: 500 }
+    );
+  }
+}

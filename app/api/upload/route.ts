@@ -1,0 +1,81 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { ObjectId } from 'mongodb';
+import formidable, { IncomingForm, File } from 'formidable';
+import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
+import { getCollection } from '@/lib/db';
+import { getNoteDir, saveFile, getFileExtension } from '@/lib/storage';
+import { processingQueue } from '@/lib/queue';
+
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Parse the multipart form data
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      return NextResponse.json({ error: 'Invalid file type. Please upload an audio file.' }, { status: 400 });
+    }
+
+    // Create new note record
+    const noteId = new ObjectId().toString();
+    const notesCollection = await getCollection('notes');
+    
+    await notesCollection.insertOne({
+      _id: noteId,
+      userId,
+      title: `Processing: ${file.name}`,
+      description: 'Processing audio file...',
+      content: '',
+      status: 'processing',
+      originalFileName: file.name,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Set up file paths
+    const noteDir = getNoteDir(userId, noteId);
+    const fileExtension = getFileExtension(file.name);
+    const originalPath = path.join(noteDir, `original${fileExtension}`);
+    const mp3Path = path.join(noteDir, 'converted.mp3');
+    const markdownPath = path.join(noteDir, 'output.md');
+
+    // Save the uploaded file
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    saveFile(originalPath, fileBuffer);
+
+    // Add to processing queue
+    processingQueue.addItem({
+      id: `${userId}_${noteId}`,
+      userId,
+      noteId,
+      originalPath,
+      mp3Path,
+      markdownPath,
+    });
+
+    return NextResponse.json({
+      noteId,
+      message: 'File uploaded successfully and queued for processing',
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    return NextResponse.json(
+      { error: 'Failed to upload file' },
+      { status: 500 }
+    );
+  }
+}

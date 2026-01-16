@@ -1,0 +1,26 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { processingQueue } from '@/lib/queue';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const queueId = `${userId}_${params.id}`;
+    const progress = processingQueue.getProgress(queueId);
+
+    return NextResponse.json(progress);
+  } catch (error) {
+    console.error('Failed to get progress:', error);
+    return NextResponse.json(
+      { error: 'Failed to get progress' },
+      { status: 500 }
+    );
+  }
+}
