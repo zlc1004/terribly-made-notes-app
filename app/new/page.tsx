@@ -191,16 +191,18 @@ export default function NewNote() {
 
         {uploading && (
           <div>
-            <div style={{
-              background: '#fef3c7',
-              border: '1px solid #f59e0b',
-              borderRadius: '6px',
-              padding: '12px',
-              marginBottom: '20px',
-              textAlign: 'center'
-            }}>
-              <strong>⚠️ Don't leave this page while uploading!</strong>
-            </div>
+            {queueProgress === 0 && currentStatus === 'Uploading file...' && (
+              <div style={{
+                background: '#fef3c7',
+                border: '1px solid #f59e0b',
+                borderRadius: '6px',
+                padding: '12px',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                <strong>⚠️ Don't leave this page while uploading!</strong>
+              </div>
+            )}
 
             {queueProgress < 100 && (
               <div className="progress-container">
