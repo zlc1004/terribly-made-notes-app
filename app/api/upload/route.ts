@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { ObjectId } from 'mongodb';
-import formidable, { IncomingForm, File } from 'formidable';
-import { Readable } from 'stream';
-import fs from 'fs';
 import path from 'path';
 import { getCollection } from '@/lib/db';
 import { getNoteDir, saveFile, getFileExtension } from '@/lib/storage';
@@ -18,11 +15,14 @@ export async function POST(request: NextRequest) {
 
     // Parse the multipart form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
-    
-    if (!file) {
+    const fileEntry = formData.get('file');
+
+    if (!fileEntry || typeof fileEntry === 'string') {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
+
+    // Type assertion for File from FormData
+    const file = fileEntry as File & { type: string; name: string };
 
     // Validate file type
     if (!file.type.startsWith('audio/')) {
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     // Create new note record
     const noteId = new ObjectId().toString();
     const notesCollection = await getCollection('notes');
-    
+
     await notesCollection.insertOne({
-      _id: noteId,
+      _id: new ObjectId(noteId),
       userId,
       title: `Processing: ${file.name}`,
       description: 'Processing audio file...',

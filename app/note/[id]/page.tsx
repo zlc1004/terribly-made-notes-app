@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { marked } from "marked";
+import { markedKatex } from "marked-katex-extension";
 
 interface Note {
   _id: string;
@@ -14,26 +15,41 @@ interface Note {
   status: string;
 }
 
-export default function NotePage({ params }: { params: { id: string } }) {
+export default function NotePage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push('/');
-      return;
-    }
-    
-    if (isLoaded && isSignedIn) {
-      fetchNote();
-    }
-  }, [isLoaded, isSignedIn, params.id]);
+    // Configure marked with KaTeX extension
+    marked.use(markedKatex({
+      throwOnError: false,
+      output: 'html'
+    }));
+
+    const initPage = async () => {
+      if (isLoaded && !isSignedIn) {
+        router.push('/');
+        return;
+      }
+
+      if (isLoaded && isSignedIn) {
+        fetchNote();
+      }
+    };
+
+    initPage();
+  }, [isLoaded, isSignedIn]);
 
   const fetchNote = async () => {
     try {
-      const response = await fetch(`/api/notes/${params.id}`);
+      const { id } = await params;
+      const response = await fetch(`/api/notes/${id}`);
       if (response.ok) {
         const data = await response.json();
         setNote(data);
@@ -53,7 +69,8 @@ export default function NotePage({ params }: { params: { id: string } }) {
     }
 
     try {
-      const response = await fetch(`/api/notes/${params.id}`, {
+      const { id } = await params;
+      const response = await fetch(`/api/notes/${id}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -127,7 +144,7 @@ export default function NotePage({ params }: { params: { id: string } }) {
             <p>This note is still being processed. Please check back in a few minutes.</p>
           </div>
         ) : (
-          <div 
+          <div
             className="markdown-content"
             dangerouslySetInnerHTML={{ __html: marked(note.content) }}
           />

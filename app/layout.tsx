@@ -9,9 +9,10 @@ import {
 } from "@clerk/nextjs";
 import "./globals.css";
 import Link from "next/link";
+import AdminNavigation from "./components/AdminNavigation";
 
 export const metadata: Metadata = {
-  title: "Notes App",
+  title: "terribly made notes app",
   description: "AI-powered notes app with audio transcription",
 };
 
@@ -28,13 +29,11 @@ export default function RootLayout({
             <div className="container">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                 <Link href="/" className="title" style={{ textDecoration: 'none', color: 'inherit' }}>
-                  Notes App
+                  terribly made notes app
                 </Link>
                 <nav style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                   <SignedIn>
-                    <Link href="/settings" className="btn btn-secondary">
-                      Settings
-                    </Link>
+                    <AdminNavigation />
                     <UserButton />
                   </SignedIn>
                   <SignedOut>

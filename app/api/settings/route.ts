@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getCollection } from '@/lib/db';
+import { isUserAdmin } from '@/lib/admin';
 
 const defaultSettings = {
   stt: {
@@ -33,10 +34,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const settingsCollection = await getCollection('settings');
-    const settings = await settingsCollection.findOne({ userId });
+    // Only return global admin settings
+    const globalSettingsCollection = await getCollection('global_settings');
+    const globalSettings = await globalSettingsCollection.findOne({ type: 'models' });
 
-    return NextResponse.json(settings || defaultSettings);
+    if (globalSettings) {
+      return NextResponse.json(globalSettings.settings);
+    }
+
+    // Fallback to defaults if no global settings exist
+    return NextResponse.json(defaultSettings);
   } catch (error) {
     console.error('Failed to fetch settings:', error);
     return NextResponse.json(
@@ -53,16 +60,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const settings = await request.json();
-    const settingsCollection = await getCollection('settings');
+    // Check if user is admin
+    const isAdmin = await isUserAdmin(userId);
+    if (!isAdmin) {
+      return NextResponse.json({
+        error: 'Forbidden - Only administrators can modify settings'
+      }, { status: 403 });
+    }
 
-    await settingsCollection.replaceOne(
-      { userId },
-      { userId, ...settings, updatedAt: new Date() },
-      { upsert: true }
-    );
-
-    return NextResponse.json({ message: 'Settings saved successfully' });
+    // Redirect to admin endpoint
+    return NextResponse.json({
+      error: 'Use /api/admin/models endpoint for admin settings'
+    }, { status: 400 });
   } catch (error) {
     console.error('Failed to save settings:', error);
     return NextResponse.json(

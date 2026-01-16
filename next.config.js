@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['fluent-ffmpeg'],
-  },
+  serverExternalPackages: ['fluent-ffmpeg'],
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,

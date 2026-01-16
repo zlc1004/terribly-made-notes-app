@@ -27,14 +27,14 @@ export default function NewNote() {
       alert('Please select an audio file.');
       return;
     }
-    
+
     setFile(selectedFile);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    
+
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile) {
       handleFileSelect(droppedFile);
@@ -63,7 +63,7 @@ export default function NewNote() {
 
     setUploading(true);
     setCurrentStatus('Uploading file...');
-    
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -78,10 +78,10 @@ export default function NewNote() {
       }
 
       const result = await response.json();
-      
+
       // Start polling for progress
       pollProgress(result.noteId);
-      
+
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Upload failed. Please try again.');
@@ -94,7 +94,7 @@ export default function NewNote() {
       const response = await fetch(`/api/notes/${noteId}/progress`);
       if (response.ok) {
         const progress = await response.json();
-        
+
         setQueueProgress(progress.queueProgress);
         setProcessProgress(progress.processProgress);
         setCurrentStatus(progress.status);
@@ -123,7 +123,7 @@ export default function NewNote() {
     notification.className = `notification ${isError ? 'error' : ''}`;
     notification.textContent = message;
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
       document.body.removeChild(notification);
     }, 5000);
@@ -148,7 +148,7 @@ export default function NewNote() {
     <div className="container">
       <div className="card">
         <h2 style={{ marginBottom: '20px' }}>Create New Note</h2>
-        
+
         {!file && !uploading && (
           <div
             className={`upload-area ${isDragOver ? 'dragover' : ''}`}
@@ -191,32 +191,34 @@ export default function NewNote() {
 
         {uploading && (
           <div>
-            <div style={{ 
-              background: '#fef3c7', 
-              border: '1px solid #f59e0b', 
-              borderRadius: '6px', 
-              padding: '12px', 
+            <div style={{
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              borderRadius: '6px',
+              padding: '12px',
               marginBottom: '20px',
               textAlign: 'center'
             }}>
               <strong>⚠️ Don't leave this page while uploading!</strong>
             </div>
-            
-            <div className="progress-container">
-              <div className="progress-label">Queue Position</div>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ width: `${queueProgress}%` }}
-                />
+
+            {queueProgress < 100 && (
+              <div className="progress-container">
+                <div className="progress-label">Queue Position</div>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${queueProgress}%` }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="progress-container">
               <div className="progress-label">Processing Progress</div>
               <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
+                <div
+                  className="progress-fill"
                   style={{ width: `${processProgress}%` }}
                 />
               </div>

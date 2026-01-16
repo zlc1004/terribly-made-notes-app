@@ -20,7 +20,7 @@ class ProcessingQueue {
       status: 'queued',
       progress: 0,
     });
-    
+
     if (!this.processing) {
       this.processNext();
     }
@@ -42,7 +42,7 @@ class ProcessingQueue {
 
   private async processNext(): Promise<void> {
     const nextItem = this.queue.find(item => item.status === 'queued');
-    
+
     if (!nextItem) {
       this.processing = false;
       return;
@@ -50,7 +50,7 @@ class ProcessingQueue {
 
     this.processing = true;
     await this.processItem(nextItem);
-    
+
     // Continue processing
     setTimeout(() => this.processNext(), 100);
   }
@@ -61,7 +61,8 @@ class ProcessingQueue {
       item.progress = 0;
 
       // Import processing functions dynamically to avoid circular dependencies
-      const { convertAudioToMp3, transcribeAudio, summarizeText, saveMarkdownNote, deleteFile } = await import('./processing');
+      const { convertAudioToMp3, transcribeAudio, summarizeText, saveMarkdownNote } = await import('./processing');
+      const { deleteFile } = await import('./storage');
       const { getCollection } = await import('./db');
 
       // Convert audio to MP3
@@ -78,30 +79,33 @@ class ProcessingQueue {
       deleteFile(item.originalPath);
       item.progress = 40;
 
-      // Get user settings
-      const settingsCollection = await getCollection('settings');
-      const userSettings = await settingsCollection.findOne({ userId: item.userId });
+      // Get global admin settings
+      const globalSettingsCollection = await getCollection('global_settings');
+      const globalSettings = await globalSettingsCollection.findOne({ type: 'models' });
 
-      if (!userSettings) {
-        throw new Error('User settings not found. Please configure API settings first.');
+      if (!globalSettings || !globalSettings.settings) {
+        throw new Error('Global API settings not found. Please ask an administrator to configure API settings.');
       }
+
+      const settings = globalSettings.settings;
 
       // Transcribe audio
       item.progress = 50;
-      const transcription = await transcribeAudio(item.mp3Path, userSettings.stt);
+      const transcription = await transcribeAudio(item.mp3Path, settings.stt);
       item.progress = 70;
 
       // Summarize with LLM
-      const summary = await summarizeText(transcription, userSettings.llm);
+      const summary = await summarizeText(transcription, settings.llm);
       item.progress = 90;
 
       // Save markdown file
       await saveMarkdownNote(item.markdownPath, summary.content);
 
       // Update database with the results
+      const { ObjectId } = await import('mongodb');
       const notesCollection = await getCollection('notes');
       await notesCollection.updateOne(
-        { _id: item.noteId, userId: item.userId },
+        { _id: new ObjectId(item.noteId), userId: item.userId },
         {
           $set: {
             title: summary.title,
@@ -118,16 +122,17 @@ class ProcessingQueue {
 
     } catch (error) {
       console.error('Processing failed for item:', item.id, error);
-      
+
       item.status = 'error';
       item.error = error instanceof Error ? error.message : 'Unknown error';
 
       // Update database to reflect error status
       try {
+        const { ObjectId } = await import('mongodb');
         const { getCollection } = await import('./db');
         const notesCollection = await getCollection('notes');
         await notesCollection.updateOne(
-          { _id: item.noteId, userId: item.userId },
+          { _id: new ObjectId(item.noteId), userId: item.userId },
           {
             $set: {
               status: 'error',
@@ -158,7 +163,7 @@ class ProcessingQueue {
 
     const queuePosition = this.getQueuePosition(id);
     const totalQueued = this.getQueueLength();
-    
+
     let queueProgress = 0;
     if (item.status !== 'queued') {
       queueProgress = 100;

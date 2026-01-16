@@ -47,9 +47,9 @@ export async function transcribeAudio(
 ): Promise<string> {
   try {
     const audioBuffer = readFile(audioPath);
-    
+
     const formData = new FormData();
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/mp3' });
+    const audioBlob = new Blob([new Uint8Array(audioBuffer)], { type: 'audio/mp3' });
     formData.append('file', audioBlob, 'audio.mp3');
     formData.append('model', settings.modelName);
     formData.append('task', settings.task);
@@ -88,15 +88,25 @@ export async function summarizeText(
   content: string;
 }> {
   try {
-    const prompt = `Please analyze the following transcribed audio and create a structured summary. Respond with a JSON object containing:
-- "title": A concise, descriptive title for the content
-- "description": A one-line summary description
-- "content": A detailed markdown-formatted summary of the main points, organized with headers, bullet points, and proper formatting
+    const prompt = `Analyze the following transcribed audio and create a structured summary.
+
+CRITICAL INSTRUCTIONS:
+- Return ONLY a valid JSON object
+- Do NOT include any markdown code blocks, explanations, or other text
+- Do NOT wrap the JSON in \`\`\`json code blocks
+- Your entire response must be parseable JSON
+
+Required JSON structure:
+{
+  "title": "A concise, descriptive title for the content",
+  "description": "A one-line summary description",
+  "content": "A detailed markdown-formatted summary of the main points, organized with headers, bullet points, and proper formatting"
+}
 
 Transcribed text:
 ${text}
 
-Respond only with the JSON object, no additional text.`;
+Remember: Return ONLY the JSON object, nothing else.`;
 
     const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
       method: 'POST',
@@ -129,13 +139,25 @@ Respond only with the JSON object, no additional text.`;
     }
 
     try {
-      const result = JSON.parse(content);
-      
+      // Try to extract JSON from content if it's wrapped in code blocks
+      let jsonContent = content.trim();
+
+      // Remove markdown code block wrapper if present
+      if (jsonContent.startsWith('```json\n')) {
+        jsonContent = jsonContent.replace(/^```json\n/, '').replace(/\n```$/, '');
+      } else if (jsonContent.startsWith('```\n')) {
+        jsonContent = jsonContent.replace(/^```\n/, '').replace(/\n```$/, '');
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```[^\n]*\n/, '').replace(/\n```$/, '');
+      }
+
+      const result = JSON.parse(jsonContent);
+
       // Validate the response structure
       if (!result.title || !result.description || !result.content) {
         throw new Error('Invalid response structure from LLM');
       }
-      
+
       return result;
     } catch (parseError) {
       console.error('Failed to parse LLM response:', content);

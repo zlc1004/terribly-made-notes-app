@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { baseUrl, apiKey } = await request.json();
+    const { baseUrl, apiKey, type } = await request.json();
 
     if (!baseUrl || !apiKey) {
       return NextResponse.json(
@@ -29,7 +29,40 @@ export async function POST(request: NextRequest) {
       }
 
       const data = await response.json();
-      const models = data.data?.map((model: any) => model.id) || [];
+      let models = data.data?.map((model: any) => model.id) || [];
+
+      // Filter models based on type for better UX
+      if (type === 'stt') {
+        // Filter for speech-to-text models (whisper, etc.)
+        models = models.filter((model: string) =>
+          model.toLowerCase().includes('whisper') ||
+          model.toLowerCase().includes('speech') ||
+          model.toLowerCase().includes('audio') ||
+          model.toLowerCase().includes('stt')
+        );
+      } else if (type === 'tts') {
+        // Filter for text-to-speech models
+        models = models.filter((model: string) =>
+          model.toLowerCase().includes('tts') ||
+          model.toLowerCase().includes('voice') ||
+          model.toLowerCase().includes('speech') ||
+          model.toLowerCase().includes('audio') ||
+          model.toLowerCase().includes('eleven')
+        );
+      } else if (type === 'llm') {
+        // Filter out audio/speech models for LLM
+        models = models.filter((model: string) =>
+          !model.toLowerCase().includes('whisper') &&
+          !model.toLowerCase().includes('tts') &&
+          !model.toLowerCase().includes('dall-e') &&
+          !model.toLowerCase().includes('embedding')
+        );
+      }
+
+      // If no filtered models found, return all models as fallback
+      if (models.length === 0) {
+        models = data.data?.map((model: any) => model.id) || [];
+      }
 
       return NextResponse.json({ models });
     } catch (apiError) {

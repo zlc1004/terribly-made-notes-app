@@ -4,15 +4,16 @@ import { processingQueue } from '@/lib/queue';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const queueId = `${userId}_${params.id}`;
+    const queueId = `${userId}_${id}`;
     const progress = processingQueue.getProgress(queueId);
 
     return NextResponse.json(progress);

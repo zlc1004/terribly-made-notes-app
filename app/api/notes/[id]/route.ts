@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { ObjectId } from 'mongodb';
 import { getCollection } from '@/lib/db';
 import { deleteDir, getNoteDir } from '@/lib/storage';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -15,7 +17,7 @@ export async function GET(
 
     const notesCollection = await getCollection('notes');
     const note = await notesCollection.findOne({
-      _id: params.id,
+      _id: new ObjectId(id),
       userId,
     });
 
@@ -35,8 +37,9 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   try {
     const { userId } = await auth();
     if (!userId) {
@@ -45,7 +48,7 @@ export async function DELETE(
 
     const notesCollection = await getCollection('notes');
     const result = await notesCollection.deleteOne({
-      _id: params.id,
+      _id: new ObjectId(id),
       userId,
     });
 
@@ -54,7 +57,7 @@ export async function DELETE(
     }
 
     // Delete associated files
-    const noteDir = getNoteDir(userId, params.id);
+    const noteDir = getNoteDir(userId, id);
     deleteDir(noteDir);
 
     return NextResponse.json({ message: 'Note deleted successfully' });

@@ -1,3 +1,5 @@
+@import url('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css');
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -290,4 +292,19 @@ body {
 .markdown-content pre code {
   background: none;
   padding: 0;
+}
+
+/* KaTeX math styling */
+.markdown-content .katex {
+  font-size: 1em;
+}
+
+.markdown-content .katex-display {
+  margin: 1em 0;
+  text-align: center;
+}
+
+.markdown-content .katex-display > .katex {
+  display: inline-block;
+  white-space: nowrap;
 }
