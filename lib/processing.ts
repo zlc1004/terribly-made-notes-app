@@ -56,19 +56,36 @@ export async function transcribeAudio(
     formData.append('temperature', settings.temperature.toString());
     formData.append('response_format', 'text');
 
-    const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/audio/transcriptions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${settings.apiKey}`,
-      },
-      body: formData,
-    });
+    // Set 10-minute timeout for STT
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 10 * 60 * 1000); // 10 minutes
 
-    if (!response.ok) {
-      throw new Error(`STT API error: ${response.status} ${response.statusText}`);
+    try {
+      const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/audio/transcriptions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${settings.apiKey}`,
+        },
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`STT API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Speech-to-text request timed out after 10 minutes. Please try with a shorter audio file.');
+      }
+      throw error;
     }
-
-    return await response.text();
   } catch (error) {
     console.error('Transcription failed:', error);
     throw error;
@@ -108,6 +125,12 @@ ${text}
 
 Remember: Return ONLY the JSON object, nothing else.`;
 
+    // Set 5-minute timeout for LLM
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5 * 60 * 1000); // 5 minutes
+
     const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -123,9 +146,12 @@ Remember: Return ONLY the JSON object, nothing else.`;
           },
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 50000,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
@@ -164,6 +190,9 @@ Remember: Return ONLY the JSON object, nothing else.`;
       throw new Error('Failed to parse LLM response as JSON');
     }
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('AI summarization request timed out after 5 minutes. Please try again or use a shorter audio file.');
+    }
     console.error('Summarization failed:', error);
     throw error;
   }
