@@ -9,10 +9,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const sortBy = searchParams.get('sortBy') || 'uploaded';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const search = searchParams.get('search') || '';
+
     const notesCollection = await getCollection('notes');
+
+    // Build search query
+    let query: any = { userId };
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object
+    const sortField = sortBy === 'recorded' ? 'recordedAt' : 'createdAt';
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+    const sortObj: any = { [sortField]: sortDirection };
+
+    // Add secondary sort by createdAt if sorting by recordedAt
+    if (sortBy === 'recorded') {
+      sortObj.createdAt = sortDirection;
+    }
+
     const notes = await notesCollection
-      .find({ userId })
-      .sort({ createdAt: -1 })
+      .find(query)
+      .sort(sortObj)
       .toArray();
 
     return NextResponse.json(notes);

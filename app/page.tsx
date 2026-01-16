@@ -9,6 +9,7 @@ interface Note {
   title: string;
   description: string;
   createdAt: string;
+  recordedAt?: string;
   status: 'processing' | 'completed';
 }
 
@@ -20,8 +21,12 @@ interface Progress {
 
 export default function Home() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<{[key: string]: Progress}>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'uploaded' | 'recorded'>('uploaded');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     fetchNotes();
@@ -43,10 +48,16 @@ export default function Home() {
 
   const fetchNotes = async () => {
     try {
-      const response = await fetch('/api/notes');
+      const params = new URLSearchParams({
+        sortBy,
+        sortOrder,
+        search: searchTerm,
+      });
+      const response = await fetch(`/api/notes?${params}`);
       if (response.ok) {
         const data = await response.json();
         setNotes(data);
+        setFilteredNotes(data);
       }
     } catch (error) {
       console.error('Failed to fetch notes:', error);
@@ -54,6 +65,33 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  // Filter and sort notes when search term or sort options change
+  useEffect(() => {
+    let filtered = [...notes];
+
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter(note =>
+        note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        note.description.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      const dateA = sortBy === 'uploaded' ? new Date(a.createdAt) : new Date(a.recordedAt || a.createdAt);
+      const dateB = sortBy === 'uploaded' ? new Date(b.createdAt) : new Date(b.recordedAt || b.createdAt);
+
+      if (sortOrder === 'desc') {
+        return dateB.getTime() - dateA.getTime();
+      } else {
+        return dateA.getTime() - dateB.getTime();
+      }
+    });
+
+    setFilteredNotes(filtered);
+  }, [notes, searchTerm, sortBy, sortOrder]);
 
   const fetchProgress = async (noteId: string) => {
     try {
@@ -121,21 +159,49 @@ export default function Home() {
         </div>
 
         <div className="card">
-          <h2 style={{ marginBottom: '20px' }}>Your Notes</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2>Your Notes</h2>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <input
+                type="text"
+                placeholder="Search notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input"
+                style={{ width: '200px', margin: 0 }}
+              />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'uploaded' | 'recorded')}
+                className="form-select"
+                style={{ width: 'auto', margin: 0 }}
+              >
+                <option value="uploaded">Sort by Upload Time</option>
+                <option value="recorded">Sort by Recorded Time</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                className="btn btn-secondary"
+                style={{ padding: '8px 12px', fontSize: '12px' }}
+              >
+                {sortOrder === 'desc' ? '↓' : '↑'}
+              </button>
+            </div>
+          </div>
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <p>Loading notes...</p>
             </div>
-          ) : notes.length === 0 ? (
+          ) : filteredNotes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <p style={{ color: '#64748b' }}>
-                No notes yet. Create your first note by uploading an audio file!
+                {notes.length === 0 ? 'No notes yet. Create your first note by uploading an audio file!' : 'No notes match your search.'}
               </p>
             </div>
           ) : (
             <div className="note-list">
-              {notes.map((note) => {
+              {filteredNotes.map((note) => {
                 const noteProgress = progress[note._id];
 
                 return (
@@ -183,7 +249,14 @@ export default function Home() {
                         </p>
                       )}
 
-                      <p className="note-date">{formatDate(note.createdAt)}</p>
+                      <div className="note-date">
+                        <p>Uploaded: {formatDate(note.createdAt)}</p>
+                        {note.recordedAt && (
+                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+                            Recorded: {formatDate(note.recordedAt)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="note-actions">
                       {note.status === 'completed' && (

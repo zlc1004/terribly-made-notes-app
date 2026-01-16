@@ -5,6 +5,7 @@ import path from 'path';
 import { getCollection } from '@/lib/db';
 import { getNoteDir, saveFile, getFileExtension } from '@/lib/storage';
 import { processingQueue } from '@/lib/queue';
+import { extractAudioMetadata } from '@/lib/processing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,19 +32,6 @@ export async function POST(request: NextRequest) {
 
     // Create new note record
     const noteId = new ObjectId().toString();
-    const notesCollection = await getCollection('notes');
-
-    await notesCollection.insertOne({
-      _id: new ObjectId(noteId),
-      userId,
-      title: `Processing: ${file.name}`,
-      description: 'Processing audio file...',
-      content: '',
-      status: 'processing',
-      originalFileName: file.name,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
 
     // Set up file paths
     const noteDir = getNoteDir(userId, noteId);
@@ -55,6 +43,28 @@ export async function POST(request: NextRequest) {
     // Save the uploaded file
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     saveFile(originalPath, fileBuffer);
+
+    // Extract metadata from the audio file
+    const metadata = await extractAudioMetadata(originalPath);
+
+    const notesCollection = await getCollection('notes');
+    await notesCollection.insertOne({
+      _id: new ObjectId(noteId),
+      userId,
+      title: `Processing: ${file.name}`,
+      description: 'Processing audio file...',
+      content: '',
+      status: 'processing',
+      originalFileName: file.name,
+      duration: metadata.duration,
+      bitrate: metadata.bitrate,
+      sampleRate: metadata.sampleRate,
+      channels: metadata.channels,
+      format: metadata.format,
+      recordedAt: metadata.recordedAt || new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     // Add to processing queue
     processingQueue.addItem({

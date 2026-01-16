@@ -1,11 +1,99 @@
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { saveFile, deleteFile, readFile, fileExists } from './storage';
+
+const execAsync = promisify(exec);
 
 export interface ProcessingProgress {
   queueProgress: number;
   processProgress: number;
   status: string;
+}
+
+export interface AudioMetadata {
+  duration?: number;
+  bitrate?: number;
+  sampleRate?: number;
+  channels?: number;
+  format?: string;
+  recordedAt?: Date;
+  title?: string;
+  artist?: string;
+  album?: string;
+}
+
+export async function extractAudioMetadata(filePath: string): Promise<AudioMetadata> {
+  try {
+    const command = `ffprobe -v quiet -print_format json -show_format -show_streams "${filePath}"`;
+    const { stdout } = await execAsync(command);
+    const probeData = JSON.parse(stdout);
+
+    const metadata: AudioMetadata = {};
+
+    // Extract format information
+    if (probeData.format) {
+      const format = probeData.format;
+      metadata.duration = format.duration ? parseFloat(format.duration) : undefined;
+      metadata.bitrate = format.bit_rate ? parseInt(format.bit_rate) : undefined;
+      metadata.format = format.format_name;
+
+      // Extract recording date from tags
+      if (format.tags) {
+        const tags = format.tags;
+
+        // Try different possible date fields
+        const dateFields = ['date', 'creation_time', 'DATE', 'CREATION_TIME', 'recorded_date', 'RECORDED_DATE'];
+        for (const field of dateFields) {
+          if (tags[field]) {
+            const dateStr = tags[field];
+            const parsedDate = new Date(dateStr);
+            if (!isNaN(parsedDate.getTime())) {
+              metadata.recordedAt = parsedDate;
+              break;
+            }
+          }
+        }
+
+        // Extract other metadata
+        metadata.title = tags.title || tags.TITLE;
+        metadata.artist = tags.artist || tags.ARTIST;
+        metadata.album = tags.album || tags.ALBUM;
+      }
+    }
+
+    // Extract stream information (audio properties)
+    if (probeData.streams && probeData.streams.length > 0) {
+      const audioStream = probeData.streams.find((stream: any) => stream.codec_type === 'audio') || probeData.streams[0];
+      if (audioStream) {
+        metadata.sampleRate = audioStream.sample_rate ? parseInt(audioStream.sample_rate) : undefined;
+        metadata.channels = audioStream.channels ? parseInt(audioStream.channels) : undefined;
+        if (!metadata.bitrate && audioStream.bit_rate) {
+          metadata.bitrate = parseInt(audioStream.bit_rate);
+        }
+      }
+    }
+
+    // If no recorded date found in metadata, try file stats as fallback
+    if (!metadata.recordedAt) {
+      try {
+        const fs = await import('fs');
+        const stats = fs.statSync(filePath);
+        // Use the earlier of creation time or modification time
+        const fileDate = stats.birthtime < stats.mtime ? stats.birthtime : stats.mtime;
+        metadata.recordedAt = fileDate;
+      } catch (error) {
+        console.warn('Could not get file stats for date fallback:', error);
+      }
+    }
+
+    return metadata;
+  } catch (error) {
+    console.error('Failed to extract audio metadata:', error);
+    // Return basic metadata object even if extraction fails
+    return {};
+  }
 }
 
 export async function convertAudioToMp3(
