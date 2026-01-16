@@ -165,7 +165,7 @@ export default function NewNote() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="audio/*"
+              accept=".mp3, .wav, .m4a, .aac, audio/*"
               onChange={handleFileInputChange}
               style={{ display: 'none' }}
             />
