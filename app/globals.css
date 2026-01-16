@@ -23,6 +23,13 @@ body {
   padding: 20px;
 }
 
+/* Mobile responsive container */
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+}
+
 .header {
   display: flex;
   justify-content: space-between;
@@ -32,10 +39,35 @@ body {
   border-bottom: 1px solid #e2e8f0;
 }
 
+/* Mobile header adjustments */
+@media (max-width: 768px) {
+  .header {
+    margin-bottom: 20px;
+    padding: 12px 0;
+  }
+
+  .header .container > div {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header nav {
+    gap: 12px !important;
+  }
+}
+
 .title {
   font-size: 2rem;
   font-weight: bold;
   color: #1e293b;
+}
+
+/* Mobile title adjustments */
+@media (max-width: 768px) {
+  .title {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
 }
 
 .btn {
@@ -50,6 +82,22 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 44px; /* Touch-friendly minimum */
+  min-width: 44px;
+  justify-content: center;
+}
+
+/* Mobile button adjustments */
+@media (max-width: 768px) {
+  .btn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 48px; /* Larger touch targets */
+  }
+
+  .btn:active {
+    transform: scale(0.98);
+  }
 }
 
 .btn-primary {
@@ -87,6 +135,14 @@ body {
   border: 1px solid #e2e8f0;
 }
 
+/* Mobile card adjustments */
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+    border-radius: 6px;
+  }
+}
+
 .note-list {
   display: grid;
   gap: 16px;
@@ -106,6 +162,21 @@ body {
 .note-item:hover {
   border-color: #3b82f6;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Mobile note item adjustments */
+@media (max-width: 768px) {
+  .note-item {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .note-actions {
+    flex-direction: row !important;
+    width: 100%;
+    justify-content: flex-end !important;
+  }
 }
 
 .note-content {
@@ -167,6 +238,8 @@ body {
   text-align: center;
   background-color: #f9fafb;
   transition: all 0.2s;
+  min-height: 120px;
+  cursor: pointer;
 }
 
 .upload-area:hover {
@@ -177,6 +250,19 @@ body {
 .upload-area.dragover {
   border-color: #3b82f6;
   background-color: #eff6ff;
+}
+
+/* Mobile upload area adjustments */
+@media (max-width: 768px) {
+  .upload-area {
+    padding: 30px 16px;
+    min-height: 100px;
+  }
+
+  .upload-area:active {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+  }
 }
 
 .form-group {
@@ -196,6 +282,7 @@ body {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
+  min-height: 44px; /* Touch-friendly */
 }
 
 .form-input:focus {
@@ -211,6 +298,16 @@ body {
   border-radius: 6px;
   font-size: 14px;
   background-color: white;
+  min-height: 44px; /* Touch-friendly */
+}
+
+/* Mobile form adjustments */
+@media (max-width: 768px) {
+  .form-input, .form-select {
+    font-size: 16px; /* Prevents zoom on iOS */
+    min-height: 48px;
+    padding: 14px 12px;
+  }
 }
 
 .notification {
@@ -307,4 +404,70 @@ body {
 .markdown-content .katex-display > .katex {
   display: inline-block;
   white-space: nowrap;
+}
+
+/* Mobile-specific responsive utilities */
+@media (max-width: 768px) {
+  /* Stack controls vertically on small screens */
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .mobile-stack > * {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Hide non-essential elements on very small screens */
+  @media (max-width: 480px) {
+    .hide-mobile {
+      display: none !important;
+    }
+
+    /* Smaller text on mobile */
+    .note-title {
+      font-size: 16px !important;
+    }
+
+    .note-description {
+      font-size: 13px !important;
+    }
+
+    .note-date {
+      font-size: 11px !important;
+    }
+  }
+
+  /* Progress bars on mobile */
+  .progress-container {
+    margin: 16px 0 !important;
+  }
+
+  .progress-label {
+    font-size: 13px !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* Better touch targets for navigation */
+  nav a, nav button {
+    min-height: 44px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Settings page mobile adjustments */
+  .mobile-card {
+    padding: 16px !important;
+  }
+
+  .mobile-class-item {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .mobile-class-item button {
+    align-self: flex-end !important;
+  }
 }

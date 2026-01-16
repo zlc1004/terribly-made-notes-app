@@ -117,7 +117,7 @@ export default function UserSettings() {
 
       <div className="card">
         <h2 style={{ marginBottom: '20px' }}>User Settings</h2>
-        
+
         <div style={{ marginBottom: '30px' }}>
           <h3 style={{ marginBottom: '15px' }}>Note Classes</h3>
           <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '14px' }}>
@@ -170,15 +170,15 @@ export default function UserSettings() {
             ) : (
               <div style={{ display: 'grid', gap: '12px' }}>
                 {classes.map((noteClass) => (
-                  <div key={noteClass._id} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '6px',
-                    backgroundColor: 'white'
-                  }}>
+                <div key={noteClass._id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '6px',
+                  backgroundColor: 'white'
+                }} className="mobile-class-item">
                     <div>
                       <div style={{ fontWeight: '500', marginBottom: '4px' }}>
                         {noteClass.name}

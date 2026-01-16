@@ -177,7 +177,14 @@ export default function Home() {
       </SignedOut>
 
       <SignedIn>
-        <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{
+          marginBottom: '30px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
           <Link href="/new" className="btn btn-primary">
             + New Note
           </Link>
@@ -187,16 +194,31 @@ export default function Home() {
         </div>
 
         <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2>Your Notes</h2>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '20px',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <h2 style={{ margin: 0, minWidth: 'fit-content' }}>Your Notes</h2>
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              justifyContent: 'flex-end',
+              flex: 1,
+              minWidth: '280px'
+            }}>
               <input
                 type="text"
                 placeholder="Search notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="form-input"
-                style={{ width: '200px', margin: 0 }}
+                style={{ width: '200px', margin: 0, minWidth: '150px', maxWidth: '200px', flex: '1 1 150px' }}
               />
               <select
                 value={classFilter}
