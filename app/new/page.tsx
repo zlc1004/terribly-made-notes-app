@@ -102,10 +102,9 @@ export default function NewNote() {
         if (progress.status === 'completed') {
           setUploading(false);
           showNotification('Note created successfully!', false);
-          setTimeout(() => {
-            router.push(`/note/${noteId}`);
-          }, 2000);
-        } else if (progress.status === 'error') {
+          // Immediately redirect to the completed note
+          router.push(`/note/${noteId}`);
+        } else if (progress.status.includes('Error:')) {
           setUploading(false);
           showNotification('Processing failed. Please try again.', true);
         } else {
