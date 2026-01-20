@@ -106,6 +106,11 @@ class ProcessingQueue {
       item.progress = 92;
       await saveMarkdownNote(item.markdownPath, summary.content);
 
+      // Save transcript as txt file
+      item.progress = 93;
+      const transcriptPath = item.markdownPath.replace(/\.md$/, '.txt');
+      await saveMarkdownNote(transcriptPath, transcription);
+
       // Update database with the results
       item.progress = 95;
       const { ObjectId } = await import('mongodb');
