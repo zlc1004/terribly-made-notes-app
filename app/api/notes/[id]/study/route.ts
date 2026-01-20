@@ -93,11 +93,12 @@ Return ONLY a valid JSON array (no markdown code blocks, no explanations):
 ]
 
 Note content:
-${content.substring(0, 8000)}
+${content}
 
 Generate flashcards that test understanding of key concepts, definitions, and important facts.`;
 
   try {
+    console.log('[Flashcards] Calling LLM API...');
     const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -112,17 +113,23 @@ Generate flashcards that test understanding of key concepts, definitions, and im
             content: prompt,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.3,
         max_tokens: 4000,
+        response_format: { type: 'json_object' },
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Flashcards] LLM API error:', response.status, errorText);
       throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    const responseContent = data.choices[0]?.message?.content;
+    let responseContent = data.choices[0]?.message?.content;
+
+    console.log('[Flashcards] Raw response length:', responseContent?.length);
+    console.log('[Flashcards] Raw response preview:', responseContent?.substring(0, 200));
 
     if (!responseContent) {
       throw new Error('No content received from LLM API');
@@ -130,17 +137,24 @@ Generate flashcards that test understanding of key concepts, definitions, and im
 
     // Parse the JSON response
     let jsonContent = responseContent.trim();
-    // Remove any markdown code block wrapper if present
-    if (jsonContent.startsWith('```json\n')) {
-      jsonContent = jsonContent.replace(/^```json\n/, '').replace(/\n```$/, '');
-    } else if (jsonContent.startsWith('```\n')) {
-      jsonContent = jsonContent.replace(/^```\n/, '').replace(/\n```$/, '');
+    
+    // Try to extract JSON from various formats
+    const jsonMatch = jsonContent.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      jsonContent = jsonMatch[0];
+      console.log('[Flashcards] Extracted JSON array from response');
     }
 
+    // Remove any markdown code block wrapper if present
+    jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```$/g, '').trim();
+
+    console.log('[Flashcards] JSON to parse:', jsonContent.substring(0, 200));
+
     const flashcards = JSON.parse(jsonContent);
+    console.log('[Flashcards] Successfully parsed', flashcards.length, 'flashcards');
     return Array.isArray(flashcards) ? flashcards : [];
   } catch (error) {
-    console.error('Failed to generate flashcards:', error);
+    console.error('[Flashcards] Failed to generate flashcards:', error);
     return [];
   }
 }
@@ -162,11 +176,12 @@ Return ONLY a valid JSON array (no markdown code blocks, no explanations):
 ]
 
 Note content:
-${content.substring(0, 8000)}
+${content}
 
 Generate questions that test understanding of key concepts, facts, and applications. Ensure wrong answers are plausible but clearly incorrect to someone who understands the material.`;
 
   try {
+    console.log('[Quiz] Calling LLM API...');
     const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -181,17 +196,23 @@ Generate questions that test understanding of key concepts, facts, and applicati
             content: prompt,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.3,
         max_tokens: 4000,
+        response_format: { type: 'json_object' },
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Quiz] LLM API error:', response.status, errorText);
       throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    const responseContent = data.choices[0]?.message?.content;
+    let responseContent = data.choices[0]?.message?.content;
+
+    console.log('[Quiz] Raw response length:', responseContent?.length);
+    console.log('[Quiz] Raw response preview:', responseContent?.substring(0, 200));
 
     if (!responseContent) {
       throw new Error('No content received from LLM API');
@@ -199,17 +220,24 @@ Generate questions that test understanding of key concepts, facts, and applicati
 
     // Parse the JSON response
     let jsonContent = responseContent.trim();
-    // Remove any markdown code block wrapper if present
-    if (jsonContent.startsWith('```json\n')) {
-      jsonContent = jsonContent.replace(/^```json\n/, '').replace(/\n```$/, '');
-    } else if (jsonContent.startsWith('```\n')) {
-      jsonContent = jsonContent.replace(/^```\n/, '').replace(/\n```$/, '');
+    
+    // Try to extract JSON array from various formats
+    const jsonMatch = jsonContent.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      jsonContent = jsonMatch[0];
+      console.log('[Quiz] Extracted JSON array from response');
     }
 
+    // Remove any markdown code block wrapper if present
+    jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```$/g, '').trim();
+
+    console.log('[Quiz] JSON to parse:', jsonContent.substring(0, 200));
+
     const questions = JSON.parse(jsonContent);
+    console.log('[Quiz] Successfully parsed', questions.length, 'questions');
     return Array.isArray(questions) ? questions : [];
   } catch (error) {
-    console.error('Failed to generate quiz:', error);
+    console.error('[Quiz] Failed to generate quiz:', error);
     return [];
   }
 }
