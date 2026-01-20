@@ -99,7 +99,7 @@ class ProcessingQueue {
       const userClasses = userClassDocs.map(doc => doc.name);
 
       // Summarize with LLM
-      const summary = await summarizeText(transcription, settings.llm, userClasses);
+      const summary = await summarizeText(transcription, settings.llm, userClasses, 'summarization');
       item.progress = 90;
 
       // Save markdown file

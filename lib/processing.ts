@@ -185,9 +185,11 @@ export async function summarizeText(
   settings: {
     baseUrl: string;
     apiKey: string;
-    modelName: string;
+    summarizationModel: string;
+    quizModel: string;
   },
-  userClasses: string[] = []
+  userClasses: string[] = [],
+  modelType: 'summarization' | 'quiz' = 'summarization'
 ): Promise<{
   title: string;
   description: string;
@@ -240,7 +242,7 @@ Remember: Return ONLY the JSON object, nothing else.`;
         'Authorization': `Bearer ${settings.apiKey}`,
       },
       body: JSON.stringify({
-        model: settings.modelName,
+        model: modelType === 'quiz' ? settings.quizModel : settings.summarizationModel,
         messages: [
           {
             role: 'user',

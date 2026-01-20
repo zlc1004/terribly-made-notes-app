@@ -15,7 +15,8 @@ interface ModelSettings {
   llm: {
     baseUrl: string;
     apiKey: string;
-    modelName: string;
+    summarizationModel: string;
+    quizModel: string;
   };
   tts: {
     baseUrl: string;
@@ -42,7 +43,8 @@ export default function AdminModelsPage() {
     llm: {
       baseUrl: 'https://api.openai.com/v1',
       apiKey: '',
-      modelName: 'gpt-3.5-turbo',
+      summarizationModel: 'gpt-3.5-turbo',
+      quizModel: 'gpt-3.5-turbo',
     },
     tts: {
       baseUrl: 'https://api.openai.com/v1',
@@ -303,12 +305,15 @@ export default function AdminModelsPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Model Name</label>
+            <label className="form-label">Summarization Model</label>
+            <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+              Used for generating note summaries from transcriptions
+            </p>
             {models.llm ? (
               <select
                 className="form-select"
-                value={settings.llm.modelName}
-                onChange={(e) => updateSettings('llm', 'modelName', e.target.value)}
+                value={settings.llm.summarizationModel}
+                onChange={(e) => updateSettings('llm', 'summarizationModel', e.target.value)}
               >
                 {models.llm.map(model => (
                   <option key={model} value={model}>{model}</option>
@@ -318,8 +323,33 @@ export default function AdminModelsPage() {
               <input
                 type="text"
                 className="form-input"
-                value={settings.llm.modelName}
-                onChange={(e) => updateSettings('llm', 'modelName', e.target.value)}
+                value={settings.llm.summarizationModel}
+                onChange={(e) => updateSettings('llm', 'summarizationModel', e.target.value)}
+              />
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Quiz & Flashcard Model</label>
+            <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+              Used for generating flashcards and quiz questions
+            </p>
+            {models.llm ? (
+              <select
+                className="form-select"
+                value={settings.llm.quizModel}
+                onChange={(e) => updateSettings('llm', 'quizModel', e.target.value)}
+              >
+                {models.llm.map(model => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="form-input"
+                value={settings.llm.quizModel}
+                onChange={(e) => updateSettings('llm', 'quizModel', e.target.value)}
               />
             )}
           </div>

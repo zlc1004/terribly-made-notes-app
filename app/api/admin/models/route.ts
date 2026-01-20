@@ -14,7 +14,8 @@ interface GlobalModelSettings {
   llm: {
     baseUrl: string;
     apiKey: string;
-    modelName: string;
+    summarizationModel: string;
+    quizModel: string;
   };
   tts: {
     baseUrl: string;
@@ -38,7 +39,8 @@ const defaultGlobalSettings: GlobalModelSettings = {
   llm: {
     baseUrl: 'https://api.openai.com/v1',
     apiKey: '',
-    modelName: 'gpt-3.5-turbo',
+    summarizationModel: 'gpt-3.5-turbo',
+    quizModel: 'gpt-3.5-turbo',
   },
   tts: {
     baseUrl: 'https://api.openai.com/v1',
