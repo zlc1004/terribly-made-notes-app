@@ -15,6 +15,8 @@ interface Note {
   createdAt: string;
   status: string;
   originalFileName?: string;
+  flashcards: Flashcard[];
+  quizQuestions: QuizQuestion[];
 }
 
 interface Flashcard {
@@ -45,10 +47,9 @@ export default function NotePage({
   const [showStudyMode, setShowStudyMode] = useState(false);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
-  const [studyLoading, setStudyLoading] = useState(false);
-  const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
+  const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(-1);
   const [flashcardFlipped, setFlashcardFlipped] = useState(false);
-  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(-1);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
 
@@ -91,6 +92,15 @@ export default function NotePage({
       if (response.ok) {
         const data = await response.json();
         setNote(data);
+        setFlashcards(data.flashcards || []);
+        setQuizQuestions(data.quizQuestions || []);
+        // Initialize indices if data exists
+        if (data.flashcards?.length > 0) {
+          setCurrentFlashcardIndex(0);
+        }
+        if (data.quizQuestions?.length > 0) {
+          setCurrentQuizIndex(0);
+        }
       } else if (response.status === 404) {
         router.push('/');
       }
@@ -213,32 +223,16 @@ export default function NotePage({
     }
   };
 
-  const generateStudyMaterials = async () => {
-    setStudyLoading(true);
-    try {
-      const { id } = await params;
-      const response = await fetch(`/api/notes/${id}/study?flashcards=true&quiz=true`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setFlashcards(data.flashcards || []);
-        setQuizQuestions(data.quizQuestions || []);
-        setShowStudyMode(true);
+  const toggleStudyMode = () => {
+    setShowStudyMode(!showStudyMode);
+    if (!showStudyMode) {
+      // Reset indices when opening
+      if (flashcards.length > 0 && currentFlashcardIndex === -1) {
         setCurrentFlashcardIndex(0);
-        setCurrentQuizIndex(0);
-        setSelectedAnswer(null);
-        setQuizCompleted(false);
-        setFlashcardFlipped(false);
-      } else {
-        alert('Failed to generate study materials');
       }
-    } catch (error) {
-      console.error('Failed to generate study materials:', error);
-      alert('Failed to generate study materials');
-    } finally {
-      setStudyLoading(false);
+      if (quizQuestions.length > 0 && currentQuizIndex === -1) {
+        setCurrentQuizIndex(0);
+      }
     }
   };
 
@@ -363,11 +357,11 @@ export default function NotePage({
             </>
           )}
           <button 
-            onClick={showStudyMode ? () => setShowStudyMode(false) : generateStudyMaterials} 
+            onClick={toggleStudyMode} 
             className={`btn ${showStudyMode ? 'btn-primary' : 'btn-secondary'}`}
-            disabled={studyLoading}
+            disabled={flashcards.length === 0 && quizQuestions.length === 0}
           >
-            {studyLoading ? '⏳ Generating...' : showStudyMode ? '✕ Hide Study' : '🎴 Study Mode'}
+            {showStudyMode ? '✕ Hide Study' : '🎴 Study Mode'}
           </button>
         </div>
       </div>
@@ -459,23 +453,37 @@ export default function NotePage({
             {/* Tabs for Flashcards and Quiz */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               <button 
-                onClick={() => setCurrentQuizIndex(-1)} 
-                className="btn btn-primary"
+                onClick={() => {
+                  if (flashcards.length > 0) {
+                    setCurrentFlashcardIndex(0);
+                    setCurrentQuizIndex(-1);
+                    setFlashcardFlipped(false);
+                  }
+                }} 
+                className={`btn ${currentQuizIndex === -1 && flashcards.length > 0 ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ flex: 1 }}
+                disabled={flashcards.length === 0}
               >
                 🎴 Flashcards ({flashcards.length})
               </button>
               <button 
-                onClick={() => setCurrentFlashcardIndex(-1)} 
-                className="btn btn-secondary"
+                onClick={() => {
+                  if (quizQuestions.length > 0) {
+                    setCurrentQuizIndex(0);
+                    setCurrentFlashcardIndex(-1);
+                    setSelectedAnswer(null);
+                  }
+                }} 
+                className={`btn ${currentFlashcardIndex === -1 && quizQuestions.length > 0 ? 'btn-primary' : 'btn-secondary'}`}
                 style={{ flex: 1 }}
+                disabled={quizQuestions.length === 0}
               >
                 📝 Quiz ({quizQuestions.length})
               </button>
             </div>
 
             {/* Flashcards Section */}
-            {currentQuizIndex === -1 && flashcards.length > 0 && (
+            {currentQuizIndex === -1 && flashcards.length > 0 && currentFlashcardIndex >= 0 && currentFlashcardIndex < flashcards.length && (
               <div>
                 <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Card {currentFlashcardIndex + 1} of {flashcards.length}</span>
@@ -483,7 +491,7 @@ export default function NotePage({
                     <button onClick={prevFlashcard} disabled={currentFlashcardIndex === 0} className="btn btn-secondary">
                       ← Previous
                     </button>
-                    <button onClick={nextFlashcard} disabled={currentFlashcardIndex === flashcards.length - 1} className="btn btn-secondary">
+                    <button onClick={nextFlashcard} disabled={currentFlashcardIndex >= flashcards.length - 1} className="btn btn-secondary">
                       Next →
                     </button>
                   </div>
@@ -510,7 +518,7 @@ export default function NotePage({
                     <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '10px' }}>
                       {flashcardFlipped ? 'Answer' : 'Question'}
                     </div>
-                    {flashcardFlipped ? flashcards[currentFlashcardIndex].back : flashcards[currentFlashcardIndex].front}
+                    {flashcardFlipped ? flashcards[currentFlashcardIndex]?.back : flashcards[currentFlashcardIndex]?.front}
                     <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '15px' }}>
                       Click to flip
                     </div>
@@ -520,7 +528,7 @@ export default function NotePage({
             )}
 
             {/* Quiz Section */}
-            {currentFlashcardIndex === -1 && quizQuestions.length > 0 && (
+            {currentFlashcardIndex === -1 && quizQuestions.length > 0 && currentQuizIndex >= 0 && currentQuizIndex < quizQuestions.length && (
               <div>
                 {!quizCompleted ? (
                   <>
@@ -529,10 +537,10 @@ export default function NotePage({
                     </div>
                     <div className="card" style={{ backgroundColor: '#f8fafc', padding: '30px' }}>
                       <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>
-                        {quizQuestions[currentQuizIndex].question}
+                        {quizQuestions[currentQuizIndex]?.question || 'No question available'}
                       </h3>
                       <div style={{ display: 'grid', gap: '10px' }}>
-                        {quizQuestions[currentQuizIndex].answers.map((answer, index) => (
+                        {quizQuestions[currentQuizIndex]?.answers?.map((answer, index) => (
                           <button
                             key={index}
                             onClick={() => selectQuizAnswer(index)}
@@ -590,10 +598,10 @@ export default function NotePage({
               </div>
             )}
 
-            {(flashcards.length === 0 && quizQuestions.length === 0) && !studyLoading && (
+            {(flashcards.length === 0 && quizQuestions.length === 0) && (
               <div className="card" style={{ textAlign: 'center', padding: '40px', backgroundColor: '#f8fafc' }}>
                 <p style={{ color: '#6b7280' }}>
-                  No study materials could be generated for this note.
+                  No study materials available for this note.
                 </p>
               </div>
             )}

@@ -305,3 +305,146 @@ Remember: Return ONLY the JSON object, nothing else.`;
 export async function saveMarkdownNote(filePath: string, content: string): Promise<void> {
   saveFile(filePath, content);
 }
+
+export interface Flashcard {
+  front: string;
+  back: string;
+}
+
+export interface QuizQuestion {
+  question: string;
+  answers: string[];
+  correctAnswerIndex: number;
+  explanation: string;
+}
+
+export async function generateFlashcards(
+  content: string,
+  settings: {
+    baseUrl: string;
+    apiKey: string;
+    quizModel: string;
+  }
+): Promise<Flashcard[]> {
+  const prompt = `Based on the following note content, generate 5-10 flashcards.
+
+Return ONLY a valid JSON array (no markdown code blocks, no explanations):
+[
+  {"front": "Question or term", "back": "Answer or definition"}
+]
+
+Note content:
+${content.substring(0, 10000)}
+
+Generate flashcards that test understanding of key concepts, definitions, and important facts.`;
+
+  try {
+    const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: settings.quizModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`LLM API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let responseContent = data.choices[0]?.message?.content;
+
+    if (!responseContent) {
+      throw new Error('No content received');
+    }
+
+    // Try to extract JSON array
+    const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      responseContent = jsonMatch[0];
+    }
+
+    responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```$/g, '').trim();
+
+    const flashcards = JSON.parse(responseContent);
+    return Array.isArray(flashcards) ? flashcards : [];
+  } catch (error) {
+    console.error('Failed to generate flashcards:', error);
+    return [];
+  }
+}
+
+export async function generateQuiz(
+  content: string,
+  settings: {
+    baseUrl: string;
+    apiKey: string;
+    quizModel: string;
+  }
+): Promise<QuizQuestion[]> {
+  const prompt = `Based on the following note content, generate 5-10 quiz questions.
+
+Return ONLY a valid JSON array (no markdown code blocks, no explanations):
+[
+  {
+    "question": "Question text",
+    "answers": ["Answer 1", "Answer 2", "Answer 3", "Answer 4"],
+    "correctAnswerIndex": 0,
+    "explanation": "Brief explanation of why this is correct"
+  }
+]
+
+Note content:
+${content.substring(0, 10000)}
+
+Generate questions that test understanding. Ensure wrong answers are plausible.`;
+
+  try {
+    const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: settings.quizModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 4000,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`LLM API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let responseContent = data.choices[0]?.message?.content;
+
+    if (!responseContent) {
+      throw new Error('No content received');
+    }
+
+    // Try to extract JSON array
+    const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      responseContent = jsonMatch[0];
+    }
+
+    responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```$/g, '').trim();
+
+    const questions = JSON.parse(responseContent);
+    return Array.isArray(questions) ? questions : [];
+  } catch (error) {
+    console.error('Failed to generate quiz:', error);
+    return [];
+  }
+}

@@ -25,7 +25,17 @@ export async function GET(
       return NextResponse.json({ error: 'Note not found' }, { status: 404 });
     }
 
-    return NextResponse.json(note);
+    return NextResponse.json({
+      _id: note._id.toString(),
+      title: note.title,
+      description: note.description,
+      content: note.content,
+      flashcards: note.flashcards || [],
+      quizQuestions: note.quizQuestions || [],
+      createdAt: note.createdAt,
+      status: note.status,
+      originalFileName: note.originalFileName,
+    });
   } catch (error) {
     console.error('Failed to fetch note:', error);
     return NextResponse.json(

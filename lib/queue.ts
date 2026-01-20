@@ -61,7 +61,7 @@ class ProcessingQueue {
       item.progress = 5;
 
       // Import processing functions dynamically to avoid circular dependencies
-      const { convertAudioToMp3, transcribeAudio, summarizeText, saveMarkdownNote } = await import('./processing');
+      const { convertAudioToMp3, transcribeAudio, summarizeText, saveMarkdownNote, generateFlashcards, generateQuiz } = await import('./processing');
       const { deleteFile } = await import('./storage');
       const { getCollection } = await import('./db');
 
@@ -111,14 +111,24 @@ class ProcessingQueue {
       const transcriptPath = item.markdownPath.replace(/\.md$/, '.txt');
       await saveMarkdownNote(transcriptPath, transcription);
 
-      // Update database with the results
+      // Generate flashcards
+      item.progress = 94;
+      const flashcards = await generateFlashcards(summary.content, settings.llm);
+
+      // Generate quiz questions
       item.progress = 95;
+      const quizQuestions = await generateQuiz(summary.content, settings.llm);
+
+      // Update database with the results
+      item.progress = 98;
       const { ObjectId } = await import('mongodb');
       const notesCollection = await getCollection('notes');
       const updateData: any = {
         title: summary.title,
         description: summary.description,
         content: summary.content,
+        flashcards,
+        quizQuestions,
         status: 'completed',
         updatedAt: new Date(),
       };

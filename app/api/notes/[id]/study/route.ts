@@ -26,7 +26,6 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { type } = await request.json();
     const { searchParams } = new URL(request.url);
     const generateFlashcards = searchParams.get('flashcards') === 'true';
     const generateQuiz = searchParams.get('quiz') === 'true';
