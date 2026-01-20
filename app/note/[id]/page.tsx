@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { marked } from "marked";
 import markedKatex from "marked-katex-extension";
+import "katex/dist/contrib/mhchem";
 
 interface Note {
   _id: string;
@@ -26,6 +27,17 @@ export default function NotePage({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Import mhchem extension for chemical equations
+    const loadMhchem = async () => {
+      try {
+        // @ts-ignore - mhchem extension doesn't have TypeScript declarations but works
+        await import('katex/contrib/mhchem');
+      } catch (e) {
+        console.warn('Could not load mhchem extension:', e);
+      }
+    };
+    loadMhchem();
+
     // Configure marked with KaTeX extension
     marked.use(markedKatex({
       throwOnError: false,
