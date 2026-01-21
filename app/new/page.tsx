@@ -9,6 +9,7 @@ export default function NewNote() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [queueProgress, setQueueProgress] = useState(0);
   const [processProgress, setProcessProgress] = useState(0);
   const [currentStatus, setCurrentStatus] = useState('');
@@ -62,31 +63,51 @@ export default function NewNote() {
     if (!file) return;
 
     setUploading(true);
-    setCurrentStatus('Uploading file...');
+    setUploadProgress(0);
+    setQueueProgress(0);
+    setProcessProgress(0);
+    setCurrentStatus('Preparing upload...');
 
-    try {
+    return new Promise<void>((resolve, reject) => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete);
+          setCurrentStatus(`Uploading: ${percentComplete}%`);
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const result = JSON.parse(xhr.responseText);
+          setCurrentStatus('Upload complete! Processing...');
+          pollProgress(result.noteId);
+          resolve();
+        } else {
+          throw new Error('Upload failed');
+        }
+      });
 
-      const result = await response.json();
+      xhr.addEventListener('error', () => {
+        console.error('Upload failed');
+        alert('Upload failed. Please try again.');
+        setUploading(false);
+        reject(new Error('Upload failed'));
+      });
 
-      // Start polling for progress
-      pollProgress(result.noteId);
+      xhr.addEventListener('abort', () => {
+        setUploading(false);
+        reject(new Error('Upload cancelled'));
+      });
 
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Upload failed. Please try again.');
-      setUploading(false);
-    }
+      xhr.open('POST', '/api/upload');
+      xhr.send(formData);
+    });
   };
 
   const pollProgress = async (noteId: string) => {
@@ -131,6 +152,7 @@ export default function NewNote() {
   const resetUpload = () => {
     setFile(null);
     setUploading(false);
+    setUploadProgress(0);
     setQueueProgress(0);
     setProcessProgress(0);
     setCurrentStatus('');
@@ -190,7 +212,7 @@ export default function NewNote() {
 
         {uploading && (
           <div>
-            {queueProgress === 0 && currentStatus === 'Uploading file...' && (
+            {uploadProgress < 100 && (
               <div style={{
                 background: '#fef3c7',
                 border: '1px solid #f59e0b',
@@ -203,7 +225,25 @@ export default function NewNote() {
               </div>
             )}
 
-            {queueProgress < 100 && (
+            {uploadProgress < 100 && (
+              <div className="progress-container">
+                <div className="progress-label">Upload Progress</div>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ 
+                      width: `${uploadProgress}%`,
+                      backgroundColor: uploadProgress < 100 ? '#3b82f6' : '#10b981'
+                    }}
+                  />
+                </div>
+                <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '14px', color: '#6b7280' }}>
+                  {uploadProgress}% of {file ? (file.size / 1024 / 1024).toFixed(2) : 0} MB
+                </div>
+              </div>
+            )}
+
+            {(uploadProgress >= 100 || queueProgress > 0 || processProgress > 0) && (
               <div className="progress-container">
                 <div className="progress-label">Queue Position</div>
                 <div className="progress-bar">
@@ -215,15 +255,20 @@ export default function NewNote() {
               </div>
             )}
 
-            <div className="progress-container">
-              <div className="progress-label">Processing Progress</div>
-              <div className="progress-bar">
-                <div
-                  className="progress-fill"
-                  style={{ width: `${processProgress}%` }}
-                />
+            {(uploadProgress >= 100 || queueProgress >= 100) && (
+              <div className="progress-container">
+                <div className="progress-label">Processing Progress</div>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{ 
+                      width: `${processProgress}%`,
+                      backgroundColor: processProgress >= 100 ? '#10b981' : '#3b82f6'
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div style={{ textAlign: 'center', marginTop: '20px' }}>
               <p style={{ color: '#6b7280' }}>{currentStatus}</p>
