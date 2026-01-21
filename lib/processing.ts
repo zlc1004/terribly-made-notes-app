@@ -313,8 +313,8 @@ export interface Flashcard {
 
 export interface QuizQuestion {
   question: string;
-  answers: string[];
-  correctAnswerIndex: number;
+  wrongAnswers: string[];
+  correctAnswer: string;
   explanation: string;
 }
 
@@ -391,20 +391,22 @@ export async function generateQuiz(
 ): Promise<QuizQuestion[]> {
   const prompt = `Based on the following note content, generate 5-10 quiz questions.
 
-Return ONLY a valid JSON array (no markdown code blocks, no explanations):
-[
-  {
-    "question": "Question text",
-    "answers": ["Answer 1", "Answer 2", "Answer 3", "Answer 4"],
-    "correctAnswerIndex": 0,
-    "explanation": "Brief explanation of why this is correct"
-  }
-]
+Return ONLY a valid JSON object with a 'questions' array (no markdown code blocks, no explanations):
+{
+  "questions": [
+    {
+      "question": "Question text",
+      "wrongAnswers": ["Wrong answer 1", "Wrong answer 2", "Wrong answer 3"],
+      "correctAnswer": "Correct answer",
+      "explanation": "Brief explanation of why this is correct"
+    }
+  ]
+}
 
 Note content:
 ${content.substring(0, 10000)}
 
-Generate questions that test understanding. Ensure wrong answers are plausible.`;
+Generate questions that test understanding. Ensure wrong answers are plausible but incorrect.`;
 
   try {
     const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/chat/completions`, {
@@ -433,16 +435,18 @@ Generate questions that test understanding. Ensure wrong answers are plausible.`
       throw new Error('No content received');
     }
 
-    // Try to extract JSON array
-    const jsonMatch = responseContent.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      responseContent = jsonMatch[0];
-    }
-
+    // Try to extract JSON
     responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').replace(/```$/g, '').trim();
 
-    const questions = JSON.parse(responseContent);
-    return Array.isArray(questions) ? questions : [];
+    const parsed = JSON.parse(responseContent);
+    const questions = parsed.questions || parsed.questions || [];
+    
+    return questions.map((q: any) => ({
+      question: q.question || '',
+      wrongAnswers: q.wrongAnswers || [],
+      correctAnswer: q.correctAnswer || '',
+      explanation: q.explanation || ''
+    }));
   } catch (error) {
     console.error('Failed to generate quiz:', error);
     return [];

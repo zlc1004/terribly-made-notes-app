@@ -26,8 +26,8 @@ interface Flashcard {
 
 interface QuizQuestion {
   question: string;
-  answers: string[];
-  correctAnswerIndex: number;
+  wrongAnswers: string[];
+  correctAnswer: string;
   explanation: string;
 }
 
@@ -252,6 +252,14 @@ export default function NotePage({
       setCurrentFlashcardIndex(currentFlashcardIndex - 1);
       setFlashcardFlipped(false);
     }
+  };
+
+  const getRandomizedAnswers = (question: QuizQuestion) => {
+    const answers = [
+      { text: question.correctAnswer, isCorrect: true },
+      ...question.wrongAnswers.map(a => ({ text: a, isCorrect: false }))
+    ];
+    return answers.sort(() => Math.random() - 0.5);
   };
 
   const selectQuizAnswer = (index: number) => {
@@ -540,39 +548,59 @@ export default function NotePage({
                         {quizQuestions[currentQuizIndex]?.question || 'No question available'}
                       </h3>
                       <div style={{ display: 'grid', gap: '10px' }}>
-                        {quizQuestions[currentQuizIndex]?.answers?.map((answer, index) => (
-                          <button
-                            key={index}
-                            onClick={() => selectQuizAnswer(index)}
-                            style={{
-                              padding: '15px 20px',
-                              textAlign: 'left',
-                              backgroundColor: selectedAnswer === index ? '#dbeafe' : 'white',
-                              border: selectedAnswer === index ? '2px solid #3b82f6' : '2px solid #e2e8f0',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '15px',
-                              transition: 'all 0.2s'
-                            }}
-                          >
-                            {String.fromCharCode(65 + index)}. {answer}
-                          </button>
-                        ))}
+                        {(() => {
+                          const currentQ = quizQuestions[currentQuizIndex];
+                          if (!currentQ) return null;
+                          const randomizedAnswers = getRandomizedAnswers(currentQ);
+                          return randomizedAnswers.map((answer, index) => (
+                            <button
+                              key={index}
+                              onClick={() => selectQuizAnswer(index)}
+                              style={{
+                                padding: '15px 20px',
+                                textAlign: 'left',
+                                backgroundColor: selectedAnswer === index ? '#dbeafe' : 'white',
+                                border: selectedAnswer === index ? '2px solid #3b82f6' : '2px solid #e2e8f0',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '15px',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {String.fromCharCode(65 + index)}. {answer.text}
+                            </button>
+                          ));
+                        })()}
                       </div>
                       {selectedAnswer !== null && (
                         <div style={{ marginTop: '20px' }}>
                           <div 
                             style={{ 
                               padding: '15px', 
-                              backgroundColor: selectedAnswer === quizQuestions[currentQuizIndex].correctAnswerIndex ? '#dcfce7' : '#fee2e2',
-                              border: `2px solid ${selectedAnswer === quizQuestions[currentQuizIndex].correctAnswerIndex ? '#22c55e' : '#ef4444'}`,
+                              backgroundColor: (() => {
+                                const currentQ = quizQuestions[currentQuizIndex];
+                                if (!currentQ || selectedAnswer < 0) return '#fee2e2';
+                                const randomizedAnswers = getRandomizedAnswers(currentQ);
+                                return selectedAnswer < randomizedAnswers.length && randomizedAnswers[selectedAnswer]?.isCorrect ? '#dcfce7' : '#fee2e2';
+                              })(),
+                              border: `2px solid ${((): string => {
+                                const currentQ = quizQuestions[currentQuizIndex];
+                                if (!currentQ || selectedAnswer < 0) return '#ef4444';
+                                const randomizedAnswers = getRandomizedAnswers(currentQ);
+                                return selectedAnswer < randomizedAnswers.length && randomizedAnswers[selectedAnswer]?.isCorrect ? '#22c55e' : '#ef4444';
+                              })()}`,
                               borderRadius: '8px',
                               marginBottom: '15px'
                             }}
                           >
-                            <strong>{selectedAnswer === quizQuestions[currentQuizIndex].correctAnswerIndex ? '✓ Correct!' : '✗ Incorrect'}</strong>
+                            <strong>{((): string => {
+                              const currentQ = quizQuestions[currentQuizIndex];
+                              if (!currentQ || selectedAnswer < 0) return '✗ Incorrect';
+                              const randomizedAnswers = getRandomizedAnswers(currentQ);
+                              return selectedAnswer < randomizedAnswers.length && randomizedAnswers[selectedAnswer]?.isCorrect ? '✓ Correct!' : '✗ Incorrect';
+                            })()}</strong>
                             <p style={{ marginTop: '8px', fontSize: '14px' }}>
-                              {quizQuestions[currentQuizIndex].explanation}
+                              {quizQuestions[currentQuizIndex]?.explanation}
                             </p>
                           </div>
                           <button onClick={nextQuizQuestion} className="btn btn-primary" style={{ width: '100%' }}>
