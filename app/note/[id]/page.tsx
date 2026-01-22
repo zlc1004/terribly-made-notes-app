@@ -52,6 +52,7 @@ export default function NotePage({
   const [currentQuizIndex, setCurrentQuizIndex] = useState(-1);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [randomizedAnswers, setRandomizedAnswers] = useState<{ text: string; isCorrect: boolean }[][]>([]);
 
   useEffect(() => {
     // Import mhchem extension for chemical equations
@@ -226,13 +227,22 @@ export default function NotePage({
   const toggleStudyMode = () => {
     setShowStudyMode(!showStudyMode);
     if (!showStudyMode) {
-      // Reset indices when opening
-      if (flashcards.length > 0 && currentFlashcardIndex === -1) {
-        setCurrentFlashcardIndex(0);
-      }
-      if (quizQuestions.length > 0 && currentQuizIndex === -1) {
-        setCurrentQuizIndex(0);
-      }
+      // Generate randomized answers once when opening study mode
+      const randomized = quizQuestions.map(q => {
+        const answers = [
+          { text: q.correctAnswer, isCorrect: true },
+          ...q.wrongAnswers.map(a => ({ text: a, isCorrect: false }))
+        ];
+        return answers.sort(() => Math.random() - 0.5);
+      });
+      setRandomizedAnswers(randomized);
+      
+      // Reset indices and state
+      setCurrentFlashcardIndex(flashcards.length > 0 ? 0 : -1);
+      setCurrentQuizIndex(quizQuestions.length > 0 ? 0 : -1);
+      setSelectedAnswer(null);
+      setQuizCompleted(false);
+      setFlashcardFlipped(false);
     }
   };
 
@@ -254,14 +264,6 @@ export default function NotePage({
     }
   };
 
-  const getRandomizedAnswers = (question: QuizQuestion) => {
-    const answers = [
-      { text: question.correctAnswer, isCorrect: true },
-      ...question.wrongAnswers.map(a => ({ text: a, isCorrect: false }))
-    ];
-    return answers.sort(() => Math.random() - 0.5);
-  };
-
   const selectQuizAnswer = (index: number) => {
     setSelectedAnswer(index);
   };
@@ -276,6 +278,15 @@ export default function NotePage({
   };
 
   const restartQuiz = () => {
+    // Regenerate randomized answers for a new quiz
+    const randomized = quizQuestions.map(q => {
+      const answers = [
+        { text: q.correctAnswer, isCorrect: true },
+        ...q.wrongAnswers.map(a => ({ text: a, isCorrect: false }))
+      ];
+      return answers.sort(() => Math.random() - 0.5);
+    });
+    setRandomizedAnswers(randomized);
     setCurrentQuizIndex(0);
     setSelectedAnswer(null);
     setQuizCompleted(false);
@@ -550,9 +561,8 @@ export default function NotePage({
                       <div style={{ display: 'grid', gap: '10px' }}>
                         {(() => {
                           const currentQ = quizQuestions[currentQuizIndex];
-                          if (!currentQ) return null;
-                          const randomizedAnswers = getRandomizedAnswers(currentQ);
-                          return randomizedAnswers.map((answer, index) => (
+                          if (!currentQ || currentQuizIndex < 0 || currentQuizIndex >= randomizedAnswers.length) return null;
+                          return randomizedAnswers[currentQuizIndex].map((answer, index) => (
                             <button
                               key={index}
                               onClick={() => selectQuizAnswer(index)}
@@ -577,27 +587,21 @@ export default function NotePage({
                           <div 
                             style={{ 
                               padding: '15px', 
-                              backgroundColor: (() => {
-                                const currentQ = quizQuestions[currentQuizIndex];
-                                if (!currentQ || selectedAnswer < 0) return '#fee2e2';
-                                const randomizedAnswers = getRandomizedAnswers(currentQ);
-                                return selectedAnswer < randomizedAnswers.length && randomizedAnswers[selectedAnswer]?.isCorrect ? '#dcfce7' : '#fee2e2';
+                              backgroundColor: ((): string => {
+                                if (currentQuizIndex < 0 || currentQuizIndex >= randomizedAnswers.length || selectedAnswer < 0) return '#fee2e2';
+                                return selectedAnswer < randomizedAnswers[currentQuizIndex].length && randomizedAnswers[currentQuizIndex][selectedAnswer]?.isCorrect ? '#dcfce7' : '#fee2e2';
                               })(),
                               border: `2px solid ${((): string => {
-                                const currentQ = quizQuestions[currentQuizIndex];
-                                if (!currentQ || selectedAnswer < 0) return '#ef4444';
-                                const randomizedAnswers = getRandomizedAnswers(currentQ);
-                                return selectedAnswer < randomizedAnswers.length && randomizedAnswers[selectedAnswer]?.isCorrect ? '#22c55e' : '#ef4444';
+                                if (currentQuizIndex < 0 || currentQuizIndex >= randomizedAnswers.length || selectedAnswer < 0) return '#ef4444';
+                                return selectedAnswer < randomizedAnswers[currentQuizIndex].length && randomizedAnswers[currentQuizIndex][selectedAnswer]?.isCorrect ? '#22c55e' : '#ef4444';
                               })()}`,
                               borderRadius: '8px',
                               marginBottom: '15px'
                             }}
                           >
                             <strong>{((): string => {
-                              const currentQ = quizQuestions[currentQuizIndex];
-                              if (!currentQ || selectedAnswer < 0) return '✗ Incorrect';
-                              const randomizedAnswers = getRandomizedAnswers(currentQ);
-                              return selectedAnswer < randomizedAnswers.length && randomizedAnswers[selectedAnswer]?.isCorrect ? '✓ Correct!' : '✗ Incorrect';
+                              if (currentQuizIndex < 0 || currentQuizIndex >= randomizedAnswers.length || selectedAnswer < 0) return '✗ Incorrect';
+                              return selectedAnswer < randomizedAnswers[currentQuizIndex].length && randomizedAnswers[currentQuizIndex][selectedAnswer]?.isCorrect ? '✓ Correct!' : '✗ Incorrect';
                             })()}</strong>
                             <p style={{ marginTop: '8px', fontSize: '14px' }}>
                               {quizQuestions[currentQuizIndex]?.explanation}
