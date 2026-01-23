@@ -17,6 +17,7 @@ interface ModelSettings {
     apiKey: string;
     summarizationModel: string;
     quizModel: string;
+    chatModel: string;
   };
   tts: {
     baseUrl: string;
@@ -45,6 +46,7 @@ export default function AdminModelsPage() {
       apiKey: '',
       summarizationModel: 'gpt-3.5-turbo',
       quizModel: 'gpt-3.5-turbo',
+      chatModel: 'gpt-3.5-turbo',
     },
     tts: {
       baseUrl: 'https://api.openai.com/v1',
@@ -329,7 +331,7 @@ export default function AdminModelsPage() {
             )}
           </div>
 
-          <div className="form-group">
+            <div className="form-group">
             <label className="form-label">Quiz & Flashcard Model</label>
             <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
               Used for generating flashcards and quiz questions
@@ -350,6 +352,31 @@ export default function AdminModelsPage() {
                 className="form-input"
                 value={settings.llm.quizModel}
                 onChange={(e) => updateSettings('llm', 'quizModel', e.target.value)}
+              />
+            )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Chat Model</label>
+            <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+              Used for conversational AI chat about the note
+            </p>
+            {models.llm ? (
+              <select
+                className="form-select"
+                value={settings.llm.chatModel}
+                onChange={(e) => updateSettings('llm', 'chatModel', e.target.value)}
+              >
+                {models.llm.map(model => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="form-input"
+                value={settings.llm.chatModel}
+                onChange={(e) => updateSettings('llm', 'chatModel', e.target.value)}
               />
             )}
           </div>

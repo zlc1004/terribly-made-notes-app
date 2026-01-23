@@ -53,6 +53,10 @@ export default function NotePage({
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [randomizedAnswers, setRandomizedAnswers] = useState<{ text: string; isCorrect: boolean }[][]>([]);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
 
   useEffect(() => {
     // Import mhchem extension for chemical equations
@@ -318,6 +322,64 @@ export default function NotePage({
     URL.revokeObjectURL(url);
   };
 
+  const toggleChat = () => {
+    setShowChat(!showChat);
+    if (!showChat && chatMessages.length === 0) {
+      setChatMessages([{
+        role: 'assistant',
+        content: `Hi! I'm here to help you with questions about "${note?.title}". What would you like to know?`
+      }]);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setChatLoading(true);
+
+    // Add user message to chat
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+
+    try {
+      const { id } = await params;
+      const response = await fetch(`/api/notes/${id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage,
+          history: chatMessages
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      } else {
+        setChatMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: 'Sorry, I encountered an error. Please try again.' 
+        }]);
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Sorry, I encountered an error. Please try again.' 
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const clearChat = () => {
+    setChatMessages([{
+      role: 'assistant',
+      content: `Hi! I'm here to help you with questions about "${note?.title}". What would you like to know?`
+    }]);
+  };
+
   if (!isLoaded || loading) {
     return (
       <div className="container">
@@ -375,12 +437,18 @@ export default function NotePage({
               </button>
             </>
           )}
-          <button 
+           <button 
             onClick={toggleStudyMode} 
             className={`btn ${showStudyMode ? 'btn-primary' : 'btn-secondary'}`}
             disabled={flashcards.length === 0 && quizQuestions.length === 0}
           >
             {showStudyMode ? '✕ Hide Study' : '🎴 Study Mode'}
+          </button>
+          <button 
+            onClick={toggleChat} 
+            className={`btn ${showChat ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            {showChat ? '✕ Hide Chat' : '💬 Chat'}
           </button>
         </div>
       </div>
@@ -637,6 +705,94 @@ export default function NotePage({
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Chat Panel */}
+        {showChat && (
+          <div style={{ marginTop: '30px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>
+                Chat about this note
+              </h2>
+              <button onClick={clearChat} className="btn btn-secondary" style={{ fontSize: '14px' }}>
+                Clear Chat
+              </button>
+            </div>
+            
+            <div className="card" style={{ 
+              backgroundColor: '#f8fafc',
+              maxHeight: '500px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              {/* Chat Messages */}
+              <div style={{ 
+                flex: 1,
+                overflowY: 'auto',
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '15px'
+              }}>
+                {chatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      maxWidth: '80%',
+                      padding: '12px 16px',
+                      borderRadius: '12px',
+                      backgroundColor: msg.role === 'user' ? '#3b82f6' : 'white',
+                      color: msg.role === 'user' ? 'white' : '#1e293b',
+                      border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                ))}
+                {chatLoading && (
+                  <div style={{
+                    alignSelf: 'flex-start',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #e2e8f0',
+                    color: '#6b7280',
+                    fontStyle: 'italic'
+                  }}>
+                    Thinking...
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div style={{ 
+                padding: '15px',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                gap: '10px'
+              }}>
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+                  placeholder="Ask a question about this note..."
+                  className="form-input"
+                  style={{ flex: 1 }}
+                  disabled={chatLoading}
+                />
+                <button
+                  onClick={sendChatMessage}
+                  className="btn btn-primary"
+                  disabled={!chatInput.trim() || chatLoading}
+                >
+                  Send
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

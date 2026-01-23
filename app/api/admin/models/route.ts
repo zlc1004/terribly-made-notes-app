@@ -16,6 +16,7 @@ interface GlobalModelSettings {
     apiKey: string;
     summarizationModel: string;
     quizModel: string;
+    chatModel: string;
   };
   tts: {
     baseUrl: string;
@@ -41,6 +42,7 @@ const defaultGlobalSettings: GlobalModelSettings = {
     apiKey: '',
     summarizationModel: 'gpt-3.5-turbo',
     quizModel: 'gpt-3.5-turbo',
+    chatModel: 'gpt-3.5-turbo',
   },
   tts: {
     baseUrl: 'https://api.openai.com/v1',
