@@ -1,0 +1,135 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getCollection } from '@/lib/db';
+import formidable from 'formidable';
+import fs from 'fs/promises';
+import path from 'path';
+import { ObjectId } from 'mongodb';
+
+// Helper function to validate token
+async function validateToken(token: string) {
+  if (!token) return null;
+  
+  const tokensCollection = await getCollection('shortcut_tokens');
+  const tokenRecord = await tokensCollection.findOne({ 
+    token,
+    isActive: true 
+  });
+  
+  if (!tokenRecord) return null;
+  
+  // Update last used timestamp
+  await tokensCollection.updateOne(
+    { _id: tokenRecord._id },
+    { $set: { lastUsed: new Date() } }
+  );
+  
+  return tokenRecord;
+}
+
+// Helper function to save uploaded file
+async function saveUploadedFile(file: formidable.File, userId: string) {
+  // Create uploads directory if it doesn't exist
+  const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
+  await fs.mkdir(uploadsDir, { recursive: true });
+  
+  // Generate unique filename
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const filename = `shortcut_${userId}_${timestamp}_${file.originalFilename || 'recording'}`;
+  const filepath = path.join(uploadsDir, filename);
+  
+  // Copy file to uploads directory
+  await fs.copyFile(file.filepath, filepath);
+  
+  return { filename, filepath };
+}
+
+// Helper function to queue recording for processing
+async function queueRecording(userId: string, filename: string, filepath: string) {
+  const queueCollection = await getCollection('processing_queue');
+  
+  const queueItem = {
+    _id: new ObjectId(),
+    userId,
+    filename,
+    filepath,
+    source: 'shortcut',
+    status: 'pending',
+    createdAt: new Date(),
+    metadata: {
+      originalName: filename,
+      uploadMethod: 'Apple Shortcut',
+    }
+  };
+  
+  await queueCollection.insertOne(queueItem);
+  return queueItem;
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    // Get authorization token from header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Authorization header required' }, { status: 401 });
+    }
+    
+    const token = authHeader.replace('Bearer ', '').trim();
+    const tokenRecord = await validateToken(token);
+    
+    if (!tokenRecord) {
+      return NextResponse.json({ error: 'Invalid or inactive token' }, { status: 401 });
+    }
+    
+    // Parse the multipart form data
+    const formData = await request.formData();
+    const file = formData.get('recording') as File;
+    
+    if (!file) {
+      return NextResponse.json({ error: 'No recording file provided' }, { status: 400 });
+    }
+    
+    // Convert File to a format we can work with
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    
+    // Create temporary file
+    const tempDir = path.join(process.cwd(), 'data', 'temp');
+    await fs.mkdir(tempDir, { recursive: true });
+    
+    const tempFilename = `temp_${Date.now()}_${file.name}`;
+    const tempPath = path.join(tempDir, tempFilename);
+    
+    await fs.writeFile(tempPath, buffer);
+    
+    // Create formidable-like file object
+    const formidableFile = {
+      filepath: tempPath,
+      originalFilename: file.name,
+      mimetype: file.type,
+      size: file.size
+    } as formidable.File;
+    
+    // Save the uploaded file
+    const { filename, filepath } = await saveUploadedFile(formidableFile, tokenRecord.userId);
+    
+    // Queue for processing
+    const queueItem = await queueRecording(tokenRecord.userId, filename, filepath);
+    
+    // Clean up temp file
+    await fs.unlink(tempPath).catch(() => {}); // Ignore errors
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Recording uploaded successfully',
+      queueId: queueItem._id.toString(),
+      filename: filename
+    });
+    
+  } catch (error) {
+    console.error('Error processing shortcut upload:', error);
+    return NextResponse.json(
+      { error: 'Failed to process recording upload' },
+      { status: 500 }
+    );
+  }
+}
