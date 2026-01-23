@@ -5,7 +5,7 @@ import { getCollection } from '@/lib/db';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -13,14 +13,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!params.id) {
+    const { id } = await params;
+    if (!id) {
       return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
     }
 
     const tokensCollection = await getCollection('shortcut_tokens');
-    
+
     const result = await tokensCollection.deleteOne({
-      _id: new ObjectId(params.id),
+      _id: new ObjectId(id),
       userId,
     });
 
@@ -40,7 +41,7 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -48,17 +49,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!params.id) {
+    const { id } = await params;
+    if (!id) {
       return NextResponse.json({ error: 'Token ID is required' }, { status: 400 });
     }
 
     const { isActive } = await request.json();
 
     const tokensCollection = await getCollection('shortcut_tokens');
-    
+
     const result = await tokensCollection.updateOne(
       {
-        _id: new ObjectId(params.id),
+        _id: new ObjectId(id),
         userId,
       },
       {
