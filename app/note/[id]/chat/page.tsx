@@ -209,16 +209,31 @@ export default function NoteChatPage() {
                 style={{
                   alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   maxWidth: msg.role === 'user' ? '80%' : '100%',
-                  padding: '12px 16px',
+                  padding: msg.role === 'user' ? '12px 16px' : '0',
                   borderRadius: '12px',
-                  backgroundColor: msg.role === 'user' ? '#3b82f6' : 'white',
+                  backgroundColor: msg.role === 'user' ? '#3b82f6' : 'transparent',
                   color: msg.role === 'user' ? 'white' : '#1e293b',
-                  border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  lineHeight: '1.6'
+                  border: msg.role === 'assistant' ? 'none' : 'none',
+                  boxShadow: msg.role === 'user' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                 }}
               >
-                {msg.content}
+                {msg.role === 'user' ? (
+                  <div style={{ padding: '12px 16px' }}>
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div 
+                    className="markdown-content"
+                    style={{ 
+                      padding: '16px',
+                      backgroundColor: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '12px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: marked(msg.content) }}
+                  />
+                )}
               </div>
             ))}
             {chatLoading && (
