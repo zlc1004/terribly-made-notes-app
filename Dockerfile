@@ -18,6 +18,7 @@ COPY ./lib ./lib
 COPY ./next.config.js .
 COPY ./tsconfig.json .
 COPY ./proxy.ts .
+COPY ./.env.local .
 
 # Build the app
 RUN npm run build
