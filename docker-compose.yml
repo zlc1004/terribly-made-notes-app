@@ -8,6 +8,8 @@ services:
     environment:
       - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/notesapp
+    env_file:
+      - ./.env.local
     volumes:
       - ./data:/app/data
     depends_on:
