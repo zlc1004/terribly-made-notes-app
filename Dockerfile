@@ -17,8 +17,6 @@ COPY ./public ./public
 COPY ./lib ./lib
 COPY ./next.config.js .
 COPY ./tsconfig.json .
-COPY ./next-env.d.ts .
-COPY ./tsconfig.tsbuildinfo .
 COPY ./proxy.ts .
 
 # Build the app
