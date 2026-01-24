@@ -3,6 +3,9 @@ import { getCollection } from '@/lib/db';
 import fs from 'fs/promises';
 import path from 'path';
 import { ObjectId } from 'mongodb';
+import { getNoteDir, saveFile, getFileExtension } from '@/lib/storage';
+import { processingQueue } from '@/lib/queue';
+import { extractAudioMetadata } from '@/lib/processing';
 
 // Helper function to validate token
 async function validateToken(token: string) {
@@ -25,45 +28,56 @@ async function validateToken(token: string) {
   return tokenRecord;
 }
 
-// Helper function to save uploaded file
-async function saveUploadedFile(file: File, userId: string) {
-  // Create uploads directory if it doesn't exist
-  const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
-  await fs.mkdir(uploadsDir, { recursive: true });
+// Helper function to create note record and queue for processing
+async function createAndQueueNote(userId: string, file: File | null, fileBuffer: Buffer, originalFileName: string) {
+  // Create new note record
+  const noteId = new ObjectId().toString();
 
-  // Generate unique filename
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `shortcut_${userId}_${timestamp}_${file.name || 'recording'}`;
-  const filepath = path.join(uploadsDir, filename);
+  // Set up file paths using the same structure as regular uploads
+  const noteDir = getNoteDir(userId, noteId);
+  const fileExtension = getFileExtension(originalFileName);
+  const originalPath = path.join(noteDir, `original${fileExtension}`);
+  const mp3Path = path.join(noteDir, 'converted.mp3');
+  const markdownPath = path.join(noteDir, 'output.md');
 
-  // Write file to uploads directory
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-  await fs.writeFile(filepath, buffer);
+  // Save the uploaded file
+  saveFile(originalPath, fileBuffer);
 
-  return { filename, filepath };
-}
+  // Extract metadata from the audio file
+  const metadata = await extractAudioMetadata(originalPath);
 
-// Helper function to queue recording for processing
-async function queueRecording(userId: string, filename: string, filepath: string) {
-  const queueCollection = await getCollection('processing_queue');
-
-  const queueItem = {
-    _id: new ObjectId(),
+  // Create note record in database
+  const notesCollection = await getCollection('notes');
+  await notesCollection.insertOne({
+    _id: new ObjectId(noteId),
     userId,
-    filename,
-    filepath,
-    source: 'shortcut',
-    status: 'pending',
+    title: `Processing: ${originalFileName}`,
+    description: 'Processing audio file from Apple Shortcut...',
+    content: '',
+    status: 'processing',
+    originalFileName,
+    duration: metadata.duration,
+    bitrate: metadata.bitrate,
+    sampleRate: metadata.sampleRate,
+    channels: metadata.channels,
+    format: metadata.format,
+    recordedAt: metadata.recordedAt || new Date(),
+    source: 'Apple Shortcut',
     createdAt: new Date(),
-    metadata: {
-      originalName: filename,
-      uploadMethod: 'Apple Shortcut',
-    }
-  };
+    updatedAt: new Date(),
+  });
 
-  await queueCollection.insertOne(queueItem);
-  return queueItem;
+  // Add to processing queue (same as regular uploads)
+  processingQueue.addItem({
+    id: `${userId}_${noteId}`,
+    userId,
+    noteId,
+    originalPath,
+    mp3Path,
+    markdownPath,
+  });
+
+  return { noteId, filename: path.basename(originalPath) };
 }
 
 export async function PUT(request: NextRequest) {
@@ -83,21 +97,22 @@ export async function PUT(request: NextRequest) {
 
     // Check if it's form data or raw file
     const contentType = request.headers.get('content-type') || '';
-    let filename: string;
-    let filepath: string;
+    let file: File | null = null;
+    let fileBuffer: Buffer;
+    let originalFileName: string;
 
     if (contentType.includes('multipart/form-data')) {
       // Handle multipart form data
       const formData = await request.formData();
-      const file = formData.get('recording') as File;
+      const fileEntry = formData.get('recording') as File;
 
-      if (!file) {
+      if (!fileEntry) {
         return NextResponse.json({ error: 'No recording file provided' }, { status: 400 });
       }
 
-      const result = await saveUploadedFile(file, tokenRecord.userId);
-      filename = result.filename;
-      filepath = result.filepath;
+      file = fileEntry;
+      fileBuffer = Buffer.from(await fileEntry.arrayBuffer());
+      originalFileName = fileEntry.name || 'recording.wav';
     } else {
       // Handle raw file upload (direct body)
       const arrayBuffer = await request.arrayBuffer();
@@ -105,28 +120,26 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: 'No recording data provided' }, { status: 400 });
       }
 
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
-      await fs.mkdir(uploadsDir, { recursive: true });
-
-      // Generate unique filename
+      fileBuffer = Buffer.from(arrayBuffer);
+      // Generate filename for raw upload based on content type
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      filename = `shortcut_${tokenRecord.userId}_${timestamp}_recording.m4a`;
-      filepath = path.join(uploadsDir, filename);
-
-      // Write file to uploads directory
-      const buffer = Buffer.from(arrayBuffer);
-      await fs.writeFile(filepath, buffer);
+      if (contentType.includes('wav')) {
+        originalFileName = `shortcut_${timestamp}_recording.wav`;
+      } else if (contentType.includes('m4a') || contentType.includes('aac')) {
+        originalFileName = `shortcut_${timestamp}_recording.m4a`;
+      } else {
+        originalFileName = `shortcut_${timestamp}_recording.mp3`;
+      }
     }
 
-    // Queue for processing
-    const queueItem = await queueRecording(tokenRecord.userId, filename, filepath);
+    // Create note and add to queue using the same system as regular uploads
+    const result = await createAndQueueNote(tokenRecord.userId, file, fileBuffer, originalFileName);
 
     return NextResponse.json({
       success: true,
-      message: 'Recording uploaded successfully',
-      queueId: queueItem._id.toString(),
-      filename: filename
+      message: 'Recording uploaded successfully and queued for processing',
+      noteId: result.noteId,
+      filename: result.filename
     });
 
   } catch (error) {
