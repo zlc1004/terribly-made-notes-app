@@ -523,25 +523,17 @@ export default function UserSettings() {
                         fontSize: '12px',
                         lineHeight: '1.5'
                       }}>
-                        <p style={{ marginBottom: '8px', fontWeight: '500' }}>To set up your Apple Shortcut:</p>
+                        <p style={{ marginBottom: '8px', fontWeight: '500' }}>Simple Setup:</p>
                         <ol style={{ paddingLeft: '16px', margin: 0 }}>
-                          <li>Open the Shortcuts app on your device</li>
-                          <li>Import or create a new shortcut with these actions:
-                            <ul style={{ paddingLeft: '16px', marginTop: '4px' }}>
-                              <li>Record Audio</li>
-                              <li>Get Contents of URL</li>
-                            </ul>
-                          </li>
-                          <li>Configure "Get Contents of URL":
-                            <ul style={{ paddingLeft: '16px', marginTop: '4px' }}>
-                              <li><strong>URL:</strong> <code>https://notes.kobosh.com/api/shortcuts</code></li>
-                              <li><strong>Method:</strong> PUT</li>
-                              <li><strong>Headers:</strong> Authorization = <code>{token.token}</code></li>
-                              <li><strong>Request Body:</strong> File (select "Audio from Record Audio" from previous step)</li>
-                            </ul>
-                          </li>
-                          <li><strong>Important:</strong> If your shortcut contains placeholder text like "replace this with your token", replace that entire text with your actual token: <code>{token.token}</code></li>
-                          <li>Save and test your shortcut!</li>
+                          <li>Get the "Upload to Notes" shortcut</li>
+                          <li>Replace the text "replace this with your token" with: <code style={{
+                            backgroundColor: '#fff',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            border: '1px solid #e2e8f0',
+                            fontSize: '11px'
+                          }}>{token.token}</code></li>
+                          <li>Done! Your shortcut is ready to use.</li>
                         </ol>
                       </div>
                     </details>
