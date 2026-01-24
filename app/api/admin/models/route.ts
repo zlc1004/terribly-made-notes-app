@@ -82,9 +82,32 @@ export async function GET(request: NextRequest) {
     }
 
     const globalSettingsCollection = await getCollection('global_settings');
-    const settings = await globalSettingsCollection.findOne({ type: 'models' });
+    const settingsDoc = await globalSettingsCollection.findOne({ type: 'models' });
 
-    return NextResponse.json(settings?.settings || defaultGlobalSettings);
+    let settings = settingsDoc?.settings || defaultGlobalSettings;
+
+    // Handle backward compatibility for old STT structure
+    if (settings.stt && !settings.stt.english && !settings.stt.other) {
+      settings = {
+        ...settings,
+        stt: {
+          baseUrl: settings.stt.baseUrl,
+          apiKey: settings.stt.apiKey,
+          english: {
+            modelName: settings.stt.modelName || 'whisper-1',
+            task: settings.stt.task || 'transcribe',
+            temperature: settings.stt.temperature || 0.0,
+          },
+          other: {
+            modelName: settings.stt.modelName || 'whisper-1',
+            task: settings.stt.task || 'transcribe',
+            temperature: settings.stt.temperature || 0.0,
+          },
+        },
+      };
+    }
+
+    return NextResponse.json(settings);
   } catch (error) {
     console.error('Failed to fetch global model settings:', error);
     return NextResponse.json(

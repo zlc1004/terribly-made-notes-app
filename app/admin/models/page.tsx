@@ -99,6 +99,26 @@ export default function AdminModelsPage() {
       }
       if (response.ok) {
         const data = await response.json();
+
+        // Handle backward compatibility for old STT structure
+        if (data.stt && !data.stt.english && !data.stt.other) {
+          // Convert old structure to new structure
+          data.stt = {
+            baseUrl: data.stt.baseUrl,
+            apiKey: data.stt.apiKey,
+            english: {
+              modelName: data.stt.modelName || 'whisper-1',
+              task: data.stt.task || 'transcribe',
+              temperature: data.stt.temperature || 0.0,
+            },
+            other: {
+              modelName: data.stt.modelName || 'whisper-1',
+              task: data.stt.task || 'transcribe',
+              temperature: data.stt.temperature || 0.0,
+            },
+          };
+        }
+
         setSettings(data);
         setIsAdmin(true);
       }
@@ -175,6 +195,12 @@ export default function AdminModelsPage() {
       },
     }));
   };
+
+  // Helper function to safely get nested STT settings
+  const getSafeSTTSettings = () => ({
+    english: settings.stt.english || { modelName: 'whisper-1', task: 'transcribe', temperature: 0.0 },
+    other: settings.stt.other || { modelName: 'whisper-1', task: 'transcribe', temperature: 0.0 }
+  });
 
   if (!isLoaded || loading) {
     return (
@@ -253,31 +279,31 @@ export default function AdminModelsPage() {
             <div className="form-group">
               <label className="form-label">Model Name</label>
               {models.stt ? (
-                <select
-                  className="form-select"
-                  value={settings.stt.english.modelName}
-                  onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, modelName: e.target.value })}
-                >
-                  {models.stt.map(model => (
-                    <option key={model} value={model}>{model}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  className="form-input"
-                  value={settings.stt.english.modelName}
-                  onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, modelName: e.target.value })}
-                />
-              )}
+              <select
+                className="form-select"
+                value={settings.stt.english?.modelName || ''}
+                onChange={(e) => updateSettings('stt', 'english', { ...getSafeSTTSettings().english, modelName: e.target.value })}
+              >
+                {models.stt.map(model => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="form-input"
+                value={settings.stt.english?.modelName || ''}
+                onChange={(e) => updateSettings('stt', 'english', { ...getSafeSTTSettings().english, modelName: e.target.value })}
+              />
+            )}
             </div>
 
             <div className="form-group">
               <label className="form-label">Task</label>
               <select
                 className="form-select"
-                value={settings.stt.english.task}
-                onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, task: e.target.value as 'transcribe' | 'translate' })}
+                value={settings.stt.english?.task || 'transcribe'}
+                onChange={(e) => updateSettings('stt', 'english', { ...getSafeSTTSettings().english, task: e.target.value as 'transcribe' | 'translate' })}
               >
                 <option value="transcribe">Transcribe</option>
                 <option value="translate">Translate</option>
@@ -292,8 +318,8 @@ export default function AdminModelsPage() {
                 max="1"
                 step="0.1"
                 className="form-input"
-                value={settings.stt.english.temperature}
-                onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, temperature: parseFloat(e.target.value) })}
+                value={settings.stt.english?.temperature || 0.0}
+                onChange={(e) => updateSettings('stt', 'english', { ...getSafeSTTSettings().english, temperature: parseFloat(e.target.value) })}
               />
             </div>
           </div>
@@ -307,31 +333,31 @@ export default function AdminModelsPage() {
             <div className="form-group">
               <label className="form-label">Model Name</label>
               {models.stt ? (
-                <select
-                  className="form-select"
-                  value={settings.stt.other.modelName}
-                  onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, modelName: e.target.value })}
-                >
-                  {models.stt.map(model => (
-                    <option key={model} value={model}>{model}</option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type="text"
-                  className="form-input"
-                  value={settings.stt.other.modelName}
-                  onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, modelName: e.target.value })}
-                />
-              )}
+              <select
+                className="form-select"
+                value={settings.stt.other?.modelName || ''}
+                onChange={(e) => updateSettings('stt', 'other', { ...getSafeSTTSettings().other, modelName: e.target.value })}
+              >
+                {models.stt.map(model => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="form-input"
+                value={settings.stt.other?.modelName || ''}
+                onChange={(e) => updateSettings('stt', 'other', { ...getSafeSTTSettings().other, modelName: e.target.value })}
+              />
+            )}
             </div>
 
             <div className="form-group">
               <label className="form-label">Task</label>
               <select
                 className="form-select"
-                value={settings.stt.other.task}
-                onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, task: e.target.value as 'transcribe' | 'translate' })}
+                value={settings.stt.other?.task || 'transcribe'}
+                onChange={(e) => updateSettings('stt', 'other', { ...getSafeSTTSettings().other, task: e.target.value as 'transcribe' | 'translate' })}
               >
                 <option value="transcribe">Transcribe</option>
                 <option value="translate">Translate</option>
@@ -346,8 +372,8 @@ export default function AdminModelsPage() {
                 max="1"
                 step="0.1"
                 className="form-input"
-                value={settings.stt.other.temperature}
-                onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, temperature: parseFloat(e.target.value) })}
+                value={settings.stt.other?.temperature || 0.0}
+                onChange={(e) => updateSettings('stt', 'other', { ...getSafeSTTSettings().other, temperature: parseFloat(e.target.value) })}
               />
             </div>
           </div>

@@ -92,7 +92,21 @@ class ProcessingQueue {
       item.progress = 50;
 
       // Transcribe audio
-      const selectedModel = item.language === 'english' ? settings.stt.english : settings.stt.other;
+      let selectedModel;
+
+      // Handle backward compatibility for old STT structure
+      if (!settings.stt.english && !settings.stt.other) {
+        // Old structure - use the same settings for both languages
+        selectedModel = {
+          modelName: settings.stt.modelName || 'whisper-1',
+          task: settings.stt.task || 'transcribe',
+          temperature: settings.stt.temperature || 0.0,
+        };
+      } else {
+        // New structure - select based on language
+        selectedModel = item.language === 'english' ? settings.stt.english : settings.stt.other;
+      }
+
       const transcription = await transcribeAudio(item.mp3Path, {
         baseUrl: settings.stt.baseUrl,
         apiKey: settings.stt.apiKey,
