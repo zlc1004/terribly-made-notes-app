@@ -526,7 +526,7 @@ export default function UserSettings() {
                         <p style={{ marginBottom: '8px', fontWeight: '500' }}>To set up your Apple Shortcut:</p>
                         <ol style={{ paddingLeft: '16px', margin: 0 }}>
                           <li>Open the Shortcuts app on your device</li>
-                          <li>Create a new shortcut and add these actions:
+                          <li>Import or create a new shortcut with these actions:
                             <ul style={{ paddingLeft: '16px', marginTop: '4px' }}>
                               <li>Record Audio</li>
                               <li>Get Contents of URL</li>
@@ -536,10 +536,11 @@ export default function UserSettings() {
                             <ul style={{ paddingLeft: '16px', marginTop: '4px' }}>
                               <li><strong>URL:</strong> <code>https://notes.kobosh.com/api/shortcuts</code></li>
                               <li><strong>Method:</strong> PUT</li>
-                              <li><strong>Headers:</strong> Authorization = {token.token.substring(0, 12)}...{token.token.substring(-4)}</li>
-                              <li><strong>Request Body:</strong> Form (recording → audio file from previous step)</li>
+                              <li><strong>Headers:</strong> Authorization = <code>{token.token}</code></li>
+                              <li><strong>Request Body:</strong> File (select "Audio from Record Audio" from previous step)</li>
                             </ul>
                           </li>
+                          <li><strong>Important:</strong> If your shortcut contains placeholder text like "replace this with your token", replace that entire text with your actual token: <code>{token.token}</code></li>
                           <li>Save and test your shortcut!</li>
                         </ol>
                       </div>
