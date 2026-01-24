@@ -81,16 +81,43 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid or inactive token' }, { status: 401 });
     }
 
-    // Parse the multipart form data
-    const formData = await request.formData();
-    const file = formData.get('recording') as File;
+    // Check if it's form data or raw file
+    const contentType = request.headers.get('content-type') || '';
+    let filename: string;
+    let filepath: string;
 
-    if (!file) {
-      return NextResponse.json({ error: 'No recording file provided' }, { status: 400 });
+    if (contentType.includes('multipart/form-data')) {
+      // Handle multipart form data
+      const formData = await request.formData();
+      const file = formData.get('recording') as File;
+
+      if (!file) {
+        return NextResponse.json({ error: 'No recording file provided' }, { status: 400 });
+      }
+
+      const result = await saveUploadedFile(file, tokenRecord.userId);
+      filename = result.filename;
+      filepath = result.filepath;
+    } else {
+      // Handle raw file upload (direct body)
+      const arrayBuffer = await request.arrayBuffer();
+      if (arrayBuffer.byteLength === 0) {
+        return NextResponse.json({ error: 'No recording data provided' }, { status: 400 });
+      }
+
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'data', 'uploads');
+      await fs.mkdir(uploadsDir, { recursive: true });
+
+      // Generate unique filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      filename = `shortcut_${tokenRecord.userId}_${timestamp}_recording.m4a`;
+      filepath = path.join(uploadsDir, filename);
+
+      // Write file to uploads directory
+      const buffer = Buffer.from(arrayBuffer);
+      await fs.writeFile(filepath, buffer);
     }
-
-    // Save the uploaded file
-    const { filename, filepath } = await saveUploadedFile(file, tokenRecord.userId);
 
     // Queue for processing
     const queueItem = await queueRecording(tokenRecord.userId, filename, filepath);
