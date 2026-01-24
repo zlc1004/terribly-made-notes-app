@@ -525,7 +525,15 @@ export default function UserSettings() {
                       }}>
                         <p style={{ marginBottom: '8px', fontWeight: '500' }}>Simple Setup:</p>
                         <ol style={{ paddingLeft: '16px', margin: 0 }}>
-                          <li>Get the "Upload to Notes" shortcut</li>
+                          <li>
+                            <a
+                              href="https://notes.kobosh.com/Upload%20to%20notes.shortcut"
+                              download="Upload to notes.shortcut"
+                              style={{ color: '#3b82f6', textDecoration: 'underline' }}
+                            >
+                              Download the "Upload to Notes" shortcut
+                            </a>
+                          </li>
                           <li>Replace the text "replace this with your token" with: <code style={{
                             backgroundColor: '#fff',
                             padding: '4px 8px',
