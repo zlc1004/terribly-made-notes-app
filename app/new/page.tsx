@@ -8,6 +8,7 @@ export default function NewNote() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  const [language, setLanguage] = useState<'english' | 'other'>('english');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [queueProgress, setQueueProgress] = useState(0);
@@ -71,6 +72,7 @@ export default function NewNote() {
     return new Promise<void>((resolve, reject) => {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('language', language);
 
       const xhr = new XMLHttpRequest();
 
@@ -151,6 +153,7 @@ export default function NewNote() {
 
   const resetUpload = () => {
     setFile(null);
+    setLanguage('english');
     setUploading(false);
     setUploadProgress(0);
     setQueueProgress(0);
@@ -199,6 +202,25 @@ export default function NewNote() {
             <p style={{ marginBottom: '20px' }}>
               Selected file: <strong>{file.name}</strong>
             </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label className="form-label" style={{ display: 'block', marginBottom: '8px' }}>
+                Audio Language
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as 'english' | 'other')}
+                className="form-select"
+                style={{ maxWidth: '200px', margin: '0 auto' }}
+              >
+                <option value="english">English</option>
+                <option value="other">Other Language</option>
+              </select>
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                Select the primary language of the audio
+              </p>
+            </div>
+
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button onClick={uploadFile} className="btn btn-primary">
                 Upload & Process
@@ -231,7 +253,7 @@ export default function NewNote() {
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
-                    style={{ 
+                    style={{
                       width: `${uploadProgress}%`,
                       backgroundColor: uploadProgress < 100 ? '#3b82f6' : '#10b981'
                     }}
@@ -261,7 +283,7 @@ export default function NewNote() {
                 <div className="progress-bar">
                   <div
                     className="progress-fill"
-                    style={{ 
+                    style={{
                       width: `${processProgress}%`,
                       backgroundColor: processProgress >= 100 ? '#10b981' : '#3b82f6'
                     }}

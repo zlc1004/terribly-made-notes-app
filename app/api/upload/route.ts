@@ -17,9 +17,16 @@ export async function POST(request: NextRequest) {
     // Parse the multipart form data
     const formData = await request.formData();
     const fileEntry = formData.get('file');
+    const languageEntry = formData.get('language');
 
     if (!fileEntry || typeof fileEntry === 'string') {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Validate language parameter
+    const language = (languageEntry as string) || 'english';
+    if (!['english', 'other'].includes(language)) {
+      return NextResponse.json({ error: 'Invalid language parameter. Must be "english" or "other".' }, { status: 400 });
     }
 
     // Type assertion for File from FormData
@@ -56,6 +63,7 @@ export async function POST(request: NextRequest) {
       content: '',
       status: 'processing',
       originalFileName: file.name,
+      language: language as 'english' | 'other',
       duration: metadata.duration,
       bitrate: metadata.bitrate,
       sampleRate: metadata.sampleRate,
@@ -74,6 +82,7 @@ export async function POST(request: NextRequest) {
       originalPath,
       mp3Path,
       markdownPath,
+      language: language as 'english' | 'other',
     });
 
     return NextResponse.json({

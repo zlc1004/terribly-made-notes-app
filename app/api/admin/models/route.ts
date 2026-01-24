@@ -7,9 +7,16 @@ interface GlobalModelSettings {
   stt: {
     baseUrl: string;
     apiKey: string;
-    modelName: string;
-    task: 'transcribe' | 'translate';
-    temperature: number;
+    english: {
+      modelName: string;
+      task: 'transcribe' | 'translate';
+      temperature: number;
+    };
+    other: {
+      modelName: string;
+      task: 'transcribe' | 'translate';
+      temperature: number;
+    };
   };
   llm: {
     baseUrl: string;
@@ -33,9 +40,16 @@ const defaultGlobalSettings: GlobalModelSettings = {
   stt: {
     baseUrl: 'https://api.openai.com/v1',
     apiKey: '',
-    modelName: 'whisper-1',
-    task: 'transcribe',
-    temperature: 0.0,
+    english: {
+      modelName: 'whisper-1',
+      task: 'transcribe',
+      temperature: 0.0,
+    },
+    other: {
+      modelName: 'whisper-1',
+      task: 'transcribe',
+      temperature: 0.0,
+    },
   },
   llm: {
     baseUrl: 'https://api.openai.com/v1',
@@ -96,16 +110,16 @@ export async function POST(request: NextRequest) {
     const globalSettingsCollection = await getCollection('global_settings');
 
     const existingSettings = await globalSettingsCollection.findOne({ type: 'models' });
-    
+
     if (existingSettings) {
       await globalSettingsCollection.updateOne(
         { type: 'models' },
-        { 
-          $set: { 
+        {
+          $set: {
             settings,
             updatedAt: new Date(),
             updatedBy: userId
-          } 
+          }
         }
       );
     } else {

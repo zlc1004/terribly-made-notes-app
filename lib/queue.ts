@@ -5,6 +5,7 @@ interface QueueItem {
   originalPath: string;
   mp3Path: string;
   markdownPath: string;
+  language?: 'english' | 'other';
   status: 'queued' | 'processing' | 'completed' | 'error';
   progress: number;
   error?: string;
@@ -17,6 +18,7 @@ class ProcessingQueue {
   addItem(item: Omit<QueueItem, 'status' | 'progress'>): void {
     this.queue.push({
       ...item,
+      language: item.language || 'english',
       status: 'queued',
       progress: 0,
     });
@@ -90,7 +92,14 @@ class ProcessingQueue {
       item.progress = 50;
 
       // Transcribe audio
-      const transcription = await transcribeAudio(item.mp3Path, settings.stt);
+      const selectedModel = item.language === 'english' ? settings.stt.english : settings.stt.other;
+      const transcription = await transcribeAudio(item.mp3Path, {
+        baseUrl: settings.stt.baseUrl,
+        apiKey: settings.stt.apiKey,
+        modelName: selectedModel.modelName,
+        task: selectedModel.task,
+        temperature: selectedModel.temperature,
+      });
       item.progress = 70;
 
       // Get user classes for classification

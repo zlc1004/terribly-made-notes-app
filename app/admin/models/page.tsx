@@ -8,9 +8,16 @@ interface ModelSettings {
   stt: {
     baseUrl: string;
     apiKey: string;
-    modelName: string;
-    task: 'transcribe' | 'translate';
-    temperature: number;
+    english: {
+      modelName: string;
+      task: 'transcribe' | 'translate';
+      temperature: number;
+    };
+    other: {
+      modelName: string;
+      task: 'transcribe' | 'translate';
+      temperature: number;
+    };
   };
   llm: {
     baseUrl: string;
@@ -37,9 +44,16 @@ export default function AdminModelsPage() {
     stt: {
       baseUrl: 'https://api.openai.com/v1',
       apiKey: '',
-      modelName: 'whisper-1',
-      task: 'transcribe',
-      temperature: 0.0,
+      english: {
+        modelName: 'whisper-1',
+        task: 'transcribe',
+        temperature: 0.0,
+      },
+      other: {
+        modelName: 'whisper-1',
+        task: 'transcribe',
+        temperature: 0.0,
+      },
     },
     llm: {
       baseUrl: 'https://api.openai.com/v1',
@@ -230,51 +244,112 @@ export default function AdminModelsPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Model Name</label>
-            {models.stt ? (
+          {/* English Model Settings */}
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', marginBottom: '20px' }}>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
+              English Model
+            </h4>
+
+            <div className="form-group">
+              <label className="form-label">Model Name</label>
+              {models.stt ? (
+                <select
+                  className="form-select"
+                  value={settings.stt.english.modelName}
+                  onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, modelName: e.target.value })}
+                >
+                  {models.stt.map(model => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  className="form-input"
+                  value={settings.stt.english.modelName}
+                  onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, modelName: e.target.value })}
+                />
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Task</label>
               <select
                 className="form-select"
-                value={settings.stt.modelName}
-                onChange={(e) => updateSettings('stt', 'modelName', e.target.value)}
+                value={settings.stt.english.task}
+                onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, task: e.target.value as 'transcribe' | 'translate' })}
               >
-                {models.stt.map(model => (
-                  <option key={model} value={model}>{model}</option>
-                ))}
+                <option value="transcribe">Transcribe</option>
+                <option value="translate">Translate</option>
               </select>
-            ) : (
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Temperature (0.0 - 1.0)</label>
               <input
-                type="text"
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
                 className="form-input"
-                value={settings.stt.modelName}
-                onChange={(e) => updateSettings('stt', 'modelName', e.target.value)}
+                value={settings.stt.english.temperature}
+                onChange={(e) => updateSettings('stt', 'english', { ...settings.stt.english, temperature: parseFloat(e.target.value) })}
               />
-            )}
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Task</label>
-            <select
-              className="form-select"
-              value={settings.stt.task}
-              onChange={(e) => updateSettings('stt', 'task', e.target.value as 'transcribe' | 'translate')}
-            >
-              <option value="transcribe">Transcribe</option>
-              <option value="translate">Translate</option>
-            </select>
-          </div>
+          {/* Other Language Model Settings */}
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
+            <h4 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
+              Other Language Model
+            </h4>
 
-          <div className="form-group">
-            <label className="form-label">Temperature (0.0 - 1.0)</label>
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step="0.1"
-              className="form-input"
-              value={settings.stt.temperature}
-              onChange={(e) => updateSettings('stt', 'temperature', parseFloat(e.target.value))}
-            />
+            <div className="form-group">
+              <label className="form-label">Model Name</label>
+              {models.stt ? (
+                <select
+                  className="form-select"
+                  value={settings.stt.other.modelName}
+                  onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, modelName: e.target.value })}
+                >
+                  {models.stt.map(model => (
+                    <option key={model} value={model}>{model}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  className="form-input"
+                  value={settings.stt.other.modelName}
+                  onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, modelName: e.target.value })}
+                />
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Task</label>
+              <select
+                className="form-select"
+                value={settings.stt.other.task}
+                onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, task: e.target.value as 'transcribe' | 'translate' })}
+              >
+                <option value="transcribe">Transcribe</option>
+                <option value="translate">Translate</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Temperature (0.0 - 1.0)</label>
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
+                className="form-input"
+                value={settings.stt.other.temperature}
+                onChange={(e) => updateSettings('stt', 'other', { ...settings.stt.other, temperature: parseFloat(e.target.value) })}
+              />
+            </div>
           </div>
         </section>
 

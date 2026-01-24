@@ -29,7 +29,7 @@ async function validateToken(token: string) {
 }
 
 // Helper function to create note record and queue for processing
-async function createAndQueueNote(userId: string, file: File | null, fileBuffer: Buffer, originalFileName: string) {
+async function createAndQueueNote(userId: string, file: File | null, fileBuffer: Buffer, originalFileName: string, language: 'english' | 'other' = 'english') {
   // Create new note record
   const noteId = new ObjectId().toString();
 
@@ -56,6 +56,7 @@ async function createAndQueueNote(userId: string, file: File | null, fileBuffer:
     content: '',
     status: 'processing',
     originalFileName,
+    language,
     duration: metadata.duration,
     bitrate: metadata.bitrate,
     sampleRate: metadata.sampleRate,
@@ -75,6 +76,7 @@ async function createAndQueueNote(userId: string, file: File | null, fileBuffer:
     originalPath,
     mp3Path,
     markdownPath,
+    language,
   });
 
   return { noteId, filename: path.basename(originalPath) };
@@ -97,6 +99,14 @@ export async function PUT(request: NextRequest) {
 
     // Check if it's form data or raw file
     const contentType = request.headers.get('content-type') || '';
+    const languageHeader = request.headers.get('language') || 'english';
+
+    // Validate language parameter
+    if (!['english', 'other'].includes(languageHeader.toLowerCase())) {
+      return NextResponse.json({ error: 'Invalid Language header. Must be "english" or "other".' }, { status: 400 });
+    }
+
+    const language = languageHeader.toLowerCase() as 'english' | 'other';
     let file: File | null = null;
     let fileBuffer: Buffer;
     let originalFileName: string;
@@ -133,7 +143,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Create note and add to queue using the same system as regular uploads
-    const result = await createAndQueueNote(tokenRecord.userId, file, fileBuffer, originalFileName);
+    const result = await createAndQueueNote(tokenRecord.userId, file, fileBuffer, originalFileName, language);
 
     return NextResponse.json({
       success: true,
