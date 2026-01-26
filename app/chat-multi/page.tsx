@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, Suspense } from 'react';
 import { marked } from "marked";
 import markedKatex from "marked-katex-extension";
 import "katex/dist/contrib/mhchem";
@@ -18,7 +18,7 @@ interface ChatMessage {
   content: string;
 }
 
-export default function MultiNoteChat() {
+function MultiNoteChatContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -283,5 +283,13 @@ export default function MultiNoteChat() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MultiNoteChat() {
+  return (
+    <Suspense fallback={<div>Loading chat...</div>}>
+      <MultiNoteChatContent />
+    </Suspense>
   );
 }
