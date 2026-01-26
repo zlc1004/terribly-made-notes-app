@@ -30,6 +30,8 @@ export default function Home() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [classFilter, setClassFilter] = useState<string>('all');
   const [userClasses, setUserClasses] = useState<Array<{_id: string, name: string}>>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchNotes();
@@ -165,6 +167,14 @@ export default function Home() {
     });
   };
 
+  const handleNoteSelection = (noteId: string) => {
+    setSelectedNoteIds(prevSelected =>
+      prevSelected.includes(noteId)
+        ? prevSelected.filter(id => id !== noteId)
+        : [...prevSelected, noteId]
+    );
+  };
+
   return (
     <div className="container">
       <SignedOut>
@@ -191,6 +201,41 @@ export default function Home() {
           <Link href="/settings" className="btn btn-secondary">
             ⚙️ Settings
           </Link>
+          <button
+            onClick={() => {
+              setIsSelectionMode(!isSelectionMode);
+              setSelectedNoteIds([]); // Clear selection when toggling off
+            }}
+            className="btn btn-secondary"
+          >
+            {isSelectionMode ? 'Cancel Selection' : 'Select Notes'}
+          </button>
+          {isSelectionMode && (
+            <>
+              <button
+                onClick={() => {
+                  if (selectedNoteIds.length === filteredNotes.length) {
+                    setSelectedNoteIds([]); // Deselect all if all are selected
+                  } else {
+                    setSelectedNoteIds(filteredNotes.map(note => note._id)); // Select all
+                  }
+                }}
+                className="btn btn-secondary"
+                style={{ marginLeft: '8px' }}
+              >
+                {selectedNoteIds.length === filteredNotes.length && filteredNotes.length > 0 ? 'Deselect All' : 'Select All'}
+              </button>
+              <Link
+                href={`/chat-multi?noteIds=${selectedNoteIds.join(',')}`}
+                className={`btn btn-primary ${selectedNoteIds.length === 0 ? 'btn-disabled' : ''}`}
+                style={{ marginLeft: '8px' }}
+                aria-disabled={selectedNoteIds.length === 0}
+                tabIndex={selectedNoteIds.length === 0 ? -1 : undefined}
+              >
+                Chat with Selected ({selectedNoteIds.length})
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="card">
@@ -269,8 +314,16 @@ export default function Home() {
                 const noteProgress = progress[note._id];
 
                 return (
-                  <div key={note._id} className="note-item">
-                    <div className="note-content">
+                  <div key={note._id} className="note-item" style={{ display: 'flex', alignItems: 'center' }}>
+                    {isSelectionMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedNoteIds.includes(note._id)}
+                        onChange={() => handleNoteSelection(note._id)}
+                        style={{ marginRight: '15px', transform: 'scale(1.4)' }}
+                      />
+                    )}
+                    <div className="note-content" style={{ flexGrow: 1 }}>
                       <h3 className="note-title">
                         {note.status === 'completed' ? (
                           <Link href={`/note/${note._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
