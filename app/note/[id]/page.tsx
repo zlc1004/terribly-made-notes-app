@@ -17,6 +17,7 @@ interface Note {
   originalFileName?: string;
   flashcards: Flashcard[];
   quizQuestions: QuizQuestion[];
+  class?: string;
 }
 
 interface Flashcard {
@@ -40,6 +41,7 @@ export default function NotePage({
   const router = useRouter();
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
+  const [noteClass, setNoteClass] = useState<string>('');
   const [showTranscript, setShowTranscript] = useState(false);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
@@ -94,6 +96,7 @@ export default function NotePage({
         const data = await response.json();
         setNote(data);
         setFlashcards(data.flashcards || []);
+        setNoteClass(data.class || '');
         setQuizQuestions(data.quizQuestions || []);
         // Initialize indices if data exists
         if (data.flashcards?.length > 0) {
@@ -221,6 +224,32 @@ export default function NotePage({
     } catch (error) {
       console.error('Failed to copy transcript:', error);
       alert('Failed to copy to clipboard');
+    }
+  };
+
+  const saveNoteClass = async () => {
+    if (!note || noteClass === note.class) return; // Only save if class has changed
+
+    try {
+      const { id } = await params;
+      const response = await fetch(`/api/notes/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ class: noteClass }),
+      });
+
+      if (response.ok) {
+        // Update local note state to reflect the change
+        setNote(prevNote => prevNote ? { ...prevNote, class: noteClass } : null);
+        alert('Note class updated successfully!');
+      } else {
+        alert('Failed to update note class.');
+      }
+    } catch (error) {
+      console.error('Failed to update note class:', error);
+      alert('Failed to update note class.');
     }
   };
 
@@ -393,6 +422,25 @@ export default function NotePage({
           </button>
         </div>
       </div>
+      
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <label htmlFor="note-class-input" style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>Note Class:</label>
+        <input
+          id="note-class-input"
+          type="text"
+          value={noteClass}
+          onChange={(e) => setNoteClass(e.target.value)}
+          onBlur={saveNoteClass} // Save when the input loses focus
+          placeholder="Enter custom class"
+          style={{
+            padding: '8px 12px',
+            border: '1px solid #e2e8f0',
+            borderRadius: '6px',
+            flexGrow: 1,
+            maxWidth: '300px'
+          }}
+        />
+      </div>
 
       <div className="card">
         <header style={{ marginBottom: '30px', borderBottom: '1px solid #e2e8f0', paddingBottom: '20px' }}>
@@ -413,7 +461,7 @@ export default function NotePage({
           </div>
         ) : (
           <div
-            className="markdown-content"
+            className={`markdown-content ${noteClass}`}
             dangerouslySetInnerHTML={{ __html: marked(note.content) }}
           />
         )}

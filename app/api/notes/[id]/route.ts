@@ -35,6 +35,7 @@ export async function GET(
       createdAt: note.createdAt,
       status: note.status,
       originalFileName: note.originalFileName,
+      class: note.class || null,
     });
   } catch (error) {
     console.error('Failed to fetch note:', error);
@@ -75,6 +76,49 @@ export async function DELETE(
     console.error('Failed to delete note:', error);
     return NextResponse.json(
       { error: 'Failed to delete note' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { class: noteClass } = body; // Rename 'class' to 'noteClass' to avoid conflicts
+
+    if (typeof noteClass === 'undefined') {
+      return NextResponse.json({ error: 'No update fields provided' }, { status: 400 });
+    }
+
+    const notesCollection = await getCollection('notes');
+    const result = await notesCollection.updateOne(
+      {
+        _id: new ObjectId(id),
+        userId,
+      },
+      {
+        $set: { class: noteClass },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'Note updated successfully' });
+  } catch (error) {
+    console.error('Failed to update note:', error);
+    return NextResponse.json(
+      { error: 'Failed to update note' },
       { status: 500 }
     );
   }
