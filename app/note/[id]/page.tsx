@@ -17,7 +17,13 @@ interface Note {
   originalFileName?: string;
   flashcards: Flashcard[];
   quizQuestions: QuizQuestion[];
-  class?: string;
+  class: string;
+}
+
+interface UserClass {
+  _id: string;
+  name: string;
+  description: string;
 }
 
 interface Flashcard {
@@ -42,6 +48,7 @@ export default function NotePage({
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
   const [noteClass, setNoteClass] = useState<string>('');
+  const [availableClasses, setAvailableClasses] = useState<UserClass[]>([]);
   const [showTranscript, setShowTranscript] = useState(false);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
@@ -86,6 +93,27 @@ export default function NotePage({
     };
 
     initPage();
+  }, [isLoaded, isSignedIn]);
+
+  // Fetch available classes
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const response = await fetch('/api/user/classes');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableClasses(data);
+        } else {
+          console.error('Failed to fetch available classes:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Failed to fetch available classes:', error);
+      }
+    };
+
+    if (isLoaded && isSignedIn) {
+      fetchClasses();
+    }
   }, [isLoaded, isSignedIn]);
 
   const fetchNote = async () => {
@@ -227,8 +255,8 @@ export default function NotePage({
     }
   };
 
-  const saveNoteClass = async () => {
-    if (!note || noteClass === note.class) return; // Only save if class has changed
+  const saveNoteClass = async (newClassValue: string) => {
+    if (!note || newClassValue === note.class) return; // Only save if class has changed
 
     try {
       const { id } = await params;
@@ -237,7 +265,7 @@ export default function NotePage({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ class: noteClass }),
+        body: JSON.stringify({ class: newClassValue }),
       });
 
       if (response.ok) {
@@ -424,22 +452,30 @@ export default function NotePage({
       </div>
       
       <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <label htmlFor="note-class-input" style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>Note Class:</label>
-        <input
-          id="note-class-input"
-          type="text"
+        <label htmlFor="note-class-select" style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>Note Class:</label>
+        <select
+          id="note-class-select"
           value={noteClass}
-          onChange={(e) => setNoteClass(e.target.value)}
-          onBlur={saveNoteClass} // Save when the input loses focus
-          placeholder="Enter custom class"
+          onChange={async (e) => {
+            setNoteClass(e.target.value);
+            await saveNoteClass(e.target.value); // Save immediately on change
+          }}
           style={{
             padding: '8px 12px',
             border: '1px solid #e2e8f0',
             borderRadius: '6px',
             flexGrow: 1,
-            maxWidth: '300px'
+            maxWidth: '300px',
+            backgroundColor: 'white',
           }}
-        />
+        >
+          <option value="">None</option>
+          {availableClasses.map((cls) => (
+            <option key={cls._id} value={cls.name}>
+              {cls.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="card">
