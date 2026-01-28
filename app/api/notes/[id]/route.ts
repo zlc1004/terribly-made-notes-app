@@ -35,7 +35,7 @@ export async function GET(
       createdAt: note.createdAt,
       status: note.status,
       originalFileName: note.originalFileName,
-      class: note.class || null,
+      class: note.noteClass || null,
     });
   } catch (error) {
     console.error('Failed to fetch note:', error);
@@ -106,7 +106,7 @@ export async function PATCH(
         userId,
       },
       {
-        $set: { class: noteClass },
+        $set: { noteClass: noteClass },
       }
     );
 
