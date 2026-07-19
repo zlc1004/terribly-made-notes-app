@@ -36,6 +36,7 @@ export default function Home() {
   const [bulkShareLink, setBulkShareLink] = useState<string>('');
   const [bulkShareLoading, setBulkShareLoading] = useState(false);
   const pendingRefresh = useRef<Set<string>>(new Set());
+  const lastSelectedIndex = useRef<number>(-1);
   const [retryingNotes, setRetryingNotes] = useState<{[key: string]: boolean}>({});
 
   const handleDashboardRetry = async (noteId: string) => {
@@ -207,12 +208,37 @@ export default function Home() {
     });
   };
 
-  const handleNoteSelection = (noteId: string) => {
-    setSelectedNoteIds(prevSelected =>
-      prevSelected.includes(noteId)
-        ? prevSelected.filter(id => id !== noteId)
-        : [...prevSelected, noteId]
-    );
+  const handleNoteSelection = (noteId: string, event: React.MouseEvent) => {
+    const currentIndex = filteredNotes.findIndex(n => n._id === noteId);
+
+    if (event.shiftKey && lastSelectedIndex.current !== -1) {
+      // Shift-click: select/deselect the range between last and current index
+      const start = Math.min(lastSelectedIndex.current, currentIndex);
+      const end = Math.max(lastSelectedIndex.current, currentIndex);
+      const rangeIds = filteredNotes.slice(start, end + 1).map(n => n._id);
+
+      // Determine whether we are selecting or deselecting based on the clicked note's current state
+      const isCurrentlySelected = selectedNoteIds.includes(noteId);
+      setSelectedNoteIds(prev => {
+        if (isCurrentlySelected) {
+          // Deselect the range
+          return prev.filter(id => !rangeIds.includes(id));
+        } else {
+          // Select the range (union)
+          const merged = new Set([...prev, ...rangeIds]);
+          return Array.from(merged);
+        }
+      });
+    } else {
+      // Normal single click toggle
+      setSelectedNoteIds(prev =>
+        prev.includes(noteId)
+          ? prev.filter(id => id !== noteId)
+          : [...prev, noteId]
+      );
+    }
+
+    lastSelectedIndex.current = currentIndex;
   };
 
   const selectedShareableIds = selectedNoteIds.filter((id) => {
@@ -419,8 +445,9 @@ export default function Home() {
                       <input
                         type="checkbox"
                         checked={selectedNoteIds.includes(note._id)}
-                        onChange={() => handleNoteSelection(note._id)}
-                        style={{ marginRight: '15px', transform: 'scale(1.4)' }}
+                        onChange={() => {/* handled by onClick */}}
+                        onClick={(e) => handleNoteSelection(note._id, e)}
+                        style={{ marginRight: '15px', transform: 'scale(1.4)', cursor: 'pointer' }}
                       />
                     )}
                     <div className="note-content" style={{ flexGrow: 1 }}>
