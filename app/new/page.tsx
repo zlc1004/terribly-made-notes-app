@@ -15,6 +15,8 @@ export default function NewNote() {
   const [processProgress, setProcessProgress] = useState(0);
   const [currentStatus, setCurrentStatus] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
+  const [errorNoteId, setErrorNoteId] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -64,6 +66,7 @@ export default function NewNote() {
     if (!file) return;
 
     setUploading(true);
+    setErrorNoteId(null);
     setUploadProgress(0);
     setQueueProgress(0);
     setProcessProgress(0);
@@ -129,6 +132,7 @@ export default function NewNote() {
           router.push(`/note/${noteId}`);
         } else if (progress.status.includes('Error:')) {
           setUploading(false);
+          setErrorNoteId(noteId);
           showNotification('Processing failed. Please try again.', true);
         } else {
           // Continue polling
@@ -155,12 +159,39 @@ export default function NewNote() {
     setFile(null);
     setLanguage('english');
     setUploading(false);
+    setErrorNoteId(null);
     setUploadProgress(0);
     setQueueProgress(0);
     setProcessProgress(0);
     setCurrentStatus('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRetry = async () => {
+    if (!errorNoteId) return;
+    setRetrying(true);
+    setUploading(true);
+    setErrorNoteId(null);
+    setCurrentStatus('Retrying processing...');
+    try {
+      const response = await fetch(`/api/notes/${errorNoteId}/retry`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        pollProgress(errorNoteId);
+      } else {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to retry');
+      }
+    } catch (err: any) {
+      console.error(err);
+      showNotification(err.message || 'Retry failed', true);
+      setErrorNoteId(errorNoteId);
+      setUploading(false);
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -199,6 +230,19 @@ export default function NewNote() {
 
         {file && !uploading && (
           <div style={{ textAlign: 'center' }}>
+            {errorNoteId && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fca5a5',
+                borderRadius: '6px',
+                padding: '12px',
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                <strong style={{ color: '#ef4444' }}>⚠️ Processing Failed: {currentStatus}</strong>
+              </div>
+            )}
+
             <p style={{ marginBottom: '20px' }}>
               Selected file: <strong>{file.name}</strong>
             </p>
@@ -222,10 +266,16 @@ export default function NewNote() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button onClick={uploadFile} className="btn btn-primary">
-                Upload & Process
-              </button>
-              <button onClick={resetUpload} className="btn btn-secondary">
+              {errorNoteId ? (
+                <button onClick={handleRetry} className="btn btn-success" disabled={retrying}>
+                  {retrying ? 'Retrying...' : 'Retry Processing'}
+                </button>
+              ) : (
+                <button onClick={uploadFile} className="btn btn-primary">
+                  Upload & Process
+                </button>
+              )}
+              <button onClick={resetUpload} className="btn btn-secondary" disabled={retrying}>
                 Choose Different File
               </button>
             </div>

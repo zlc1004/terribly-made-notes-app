@@ -10,7 +10,8 @@ interface Note {
   description: string;
   createdAt: string;
   recordedAt?: string;
-  status: 'processing' | 'completed';
+  status: 'processing' | 'completed' | 'error';
+  error?: string;
   noteClass?: string;
 }
 
@@ -35,6 +36,27 @@ export default function Home() {
   const [bulkShareLink, setBulkShareLink] = useState<string>('');
   const [bulkShareLoading, setBulkShareLoading] = useState(false);
   const pendingRefresh = useRef<Set<string>>(new Set());
+  const [retryingNotes, setRetryingNotes] = useState<{[key: string]: boolean}>({});
+
+  const handleDashboardRetry = async (noteId: string) => {
+    setRetryingNotes(prev => ({ ...prev, [noteId]: true }));
+    try {
+      const response = await fetch(`/api/notes/${noteId}/retry`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        await fetchNotes();
+      } else {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to retry');
+      }
+    } catch (error) {
+      console.error('Failed to retry note:', error);
+      alert('Failed to retry note. Please try again.');
+    } finally {
+      setRetryingNotes(prev => ({ ...prev, [noteId]: false }));
+    }
+  };
 
   useEffect(() => {
     fetchNotes();
@@ -133,8 +155,8 @@ export default function Home() {
           [noteId]: progressData
         }));
 
-        // If completed, fetch the individual note after 1 second and replace the progress bar in-place
-        if (progressData.status === 'completed' && !pendingRefresh.current.has(noteId)) {
+        // If completed or failed with error, fetch the individual note after 1 second and replace the progress bar in-place
+        if ((progressData.status === 'completed' || progressData.status.includes('Error:')) && !pendingRefresh.current.has(noteId)) {
           pendingRefresh.current.add(noteId);
           setTimeout(async () => {
             pendingRefresh.current.delete(noteId);
@@ -412,7 +434,13 @@ export default function Home() {
                         )}
                       </h3>
 
-                      {note.status === 'processing' && noteProgress ? (
+                      {note.status === 'error' ? (
+                        <div style={{ margin: '8px 0', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px' }}>
+                          <p style={{ color: '#ef4444', fontSize: '13px', fontWeight: '500', margin: 0 }}>
+                            ⚠️ Processing Failed: {note.error || 'Unknown error'}
+                          </p>
+                        </div>
+                      ) : note.status === 'processing' && noteProgress ? (
                         <div style={{ margin: '12px 0' }}>
                           {noteProgress.queueProgress < 100 && (
                             <div style={{ marginBottom: '8px' }}>
@@ -429,15 +457,15 @@ export default function Home() {
                             <div className="progress-label">Processing Progress</div>
                             <div className="progress-bar">
                               <div
-                                className="progress-fill"
-                                style={{ width: `${noteProgress.processProgress}%` }}
-                              />
+                                  className="progress-fill"
+                                  style={{ width: `${noteProgress.processProgress}%` }}
+                                />
+                              </div>
                             </div>
+                            <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                              {noteProgress.status}
+                            </p>
                           </div>
-                          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                            {noteProgress.status}
-                          </p>
-                        </div>
                       ) : (
                         <p className="note-description">
                           {note.status === 'processing' ? 'Initializing...' : note.description}
@@ -463,6 +491,16 @@ export default function Home() {
                         <Link href={`/note/${note._id}`} className="btn btn-primary" style={{ fontSize: '12px', padding: '8px 12px' }}>
                           View
                         </Link>
+                      )}
+                      {note.status === 'error' && (
+                        <button
+                          onClick={() => handleDashboardRetry(note._id)}
+                          className="btn btn-success"
+                          style={{ fontSize: '12px', padding: '8px 12px', marginRight: '5px' }}
+                          disabled={retryingNotes[note._id]}
+                        >
+                          {retryingNotes[note._id] ? 'Retrying...' : 'Retry'}
+                        </button>
                       )}
                       <button
                         onClick={() => deleteNote(note._id)}

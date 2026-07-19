@@ -16,6 +16,7 @@ interface Note {
   flashcards: Flashcard[];
   quizQuestions: QuizQuestion[];
   class: string;
+  error?: string;
 }
 
 interface UserClass {
@@ -57,6 +58,36 @@ export default function NotePage({
   const [shareLinkLoading, setShareLinkLoading] = useState(false);
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [retrying, setRetrying] = useState(false);
+
+  const handlePageRetry = async () => {
+    setRetrying(true);
+    try {
+      const response = await fetch(`/api/notes/${id}/retry`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        fetchNote();
+      } else {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to retry');
+      }
+    } catch (error) {
+      console.error('Failed to retry note:', error);
+      alert('Failed to retry note. Please try again.');
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  useEffect(() => {
+    if (note && (note.status === 'processing' || note.status === 'queued')) {
+      const interval = setInterval(() => {
+        fetchNote();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [note?.status]);
 
   useEffect(() => {
     setupMarkdownRenderer();
@@ -444,9 +475,21 @@ export default function NotePage({
           </p>
         </header>
 
-        {note.status === 'processing' ? (
+        {note.status === 'processing' || note.status === 'queued' ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <p>This note is still being processed. Please check back in a few minutes.</p>
+          </div>
+        ) : note.status === 'error' ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <p style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '18px', marginBottom: '15px' }}>
+              ⚠️ Processing Failed
+            </p>
+            <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+              {note.error || 'An error occurred during audio processing.'}
+            </p>
+            <button onClick={handlePageRetry} className="btn btn-primary" disabled={retrying}>
+              {retrying ? 'Retrying...' : 'Retry Processing'}
+            </button>
           </div>
         ) : (
           <div

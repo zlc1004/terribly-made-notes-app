@@ -16,6 +16,9 @@ class ProcessingQueue {
   private processing = false;
 
   addItem(item: Omit<QueueItem, 'status' | 'progress'>): void {
+    // Remove existing item with same ID if any to prevent duplicates during retry
+    this.queue = this.queue.filter(q => q.id !== item.id);
+
     this.queue.push({
       ...item,
       language: item.language || 'english',

@@ -36,6 +36,7 @@ export async function GET(
       status: note.status,
       originalFileName: note.originalFileName,
       class: note.noteClass || null,
+      error: note.error || null,
     });
   } catch (error) {
     console.error('Failed to fetch note:', error);

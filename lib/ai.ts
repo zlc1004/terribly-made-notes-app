@@ -73,11 +73,6 @@ export async function transcribeAudio(
   formData.append('temperature', settings.temperature.toString());
   formData.append('response_format', 'text');
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, 10 * 60 * 1000); // 10 minutes
-
   try {
     const response = await fetch(`${settings.baseUrl.replace(/\/+$/, '')}/audio/transcriptions`, {
       method: 'POST',
@@ -85,10 +80,7 @@ export async function transcribeAudio(
         'Authorization': `Bearer ${settings.apiKey}`,
       },
       body: formData,
-      signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`STT API error: ${response.status} ${response.statusText}`);
@@ -96,10 +88,6 @@ export async function transcribeAudio(
 
     return await response.text();
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Speech-to-text request timed out after 10 minutes. Please try with a shorter audio file.');
-    }
     throw error;
   }
 }
