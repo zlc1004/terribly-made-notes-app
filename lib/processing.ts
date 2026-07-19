@@ -3,6 +3,17 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { saveFile, deleteFile, readFile, fileExists } from './storage';
+import { Agent, setGlobalDispatcher } from 'undici';
+
+// Disable default undici headers and body timeouts (0) for long-running AI/STT requests
+try {
+  setGlobalDispatcher(new Agent({
+    headersTimeout: 0,
+    bodyTimeout: 0,
+  }));
+} catch (e) {
+  console.warn('Failed to configure global undici dispatcher:', e);
+}
 
 const execAsync = promisify(exec);
 
